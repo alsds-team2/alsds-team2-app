@@ -1,335 +1,266 @@
 """
-Huff Model Engine — ALSDS Baseline Version
-
-Estimates predicted visits to a hypothetical new retail location using the
-Huff Gravity Model.
-
-Given a candidate store's location, NAICS category, and floor area, the model:
-1. Finds existing competing POIs in the same NAICS category.
-2. Computes attractiveness of existing competitors.
-3. Computes attractiveness of the proposed candidate store.
-4. Estimates the probability that consumers from each CBG visit the candidate.
-5. Aggregates predicted visits across Worcester CBGs.
-
-Spatial reference:
-- Candidate input coordinates are expected in WGS84 (EPSG:4326).
-- CBG geometries are projected to UTM Zone 19N (EPSG:26919) for distance calculations in meters.
-
-Study area:
-- Worcester, MA
-
-Important:
-- Teams may replace the internals of this file.
-- However, they should keep the run_huff_model(...) function signature and return structure.
+huff_engine.py  —  Huff Gravity Model V3
+ALY 6080 · Integrated Experiential Learning · Team 2
 """
 
+import sqlite3
+import math
 import time
-from pathlib import Path
-
-import geopandas as gpd
+import os
+import numpy as np
 import pandas as pd
-from shapely.geometry import Point
 
+# ─── Database path ───────────────────────────────────────────────────────────
+DB_PATH = os.path.join("Data", "urban_ai_v2.db")
 
-# ---------------------------------------------------------------------
-# Data loading
-# ---------------------------------------------------------------------
-# Files are loaded once at import time instead of being reloaded during
-# every model call. This improves response time for the deployed app.
+# ─── UTM Projection Function (EPSG:26919 — NAD83 UTM Zone 19N) ───────────────
 
-BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "Data"
+def wgs84_to_utm_zone19n_nad83(latitude, longitude):
+    a   = 6_378_137.0
+    f   = 1 / 298.257222101
+    e2  = 2 * f - f ** 2
+    k0  = 0.9996
+    E0  = 500_000.0
+    lon0 = math.radians(-69.0)
 
-PARAMS_PATH = DATA_DIR / "calibrated_parameters_filtered.csv"
-POIS_PATH = DATA_DIR / "worcester_pois.csv"
-DISTANCE_PATH = DATA_DIR / "worcester_cbg_poi_distance.csv.zip"
-VISITS_PATH = DATA_DIR / "worcester_cbg_poi_visits.csv"
-GEOJSON_PATH = DATA_DIR / "worcester_cbgs_map.geojson"
+    lat_r = math.radians(latitude)
+    lon_r = math.radians(longitude)
 
+    N = a / math.sqrt(1 - e2 * math.sin(lat_r) ** 2)
+    T = math.tan(lat_r) ** 2
+    C = (e2 / (1 - e2)) * math.cos(lat_r) ** 2
+    A = math.cos(lat_r) * (lon_r - lon0)
 
-params = pd.read_csv(PARAMS_PATH)
-pois = pd.read_csv(POIS_PATH)
-dist_matrix = pd.read_csv(DISTANCE_PATH, compression="zip")
-visits = pd.read_csv(VISITS_PATH)
+    M = a * (
+        (1 - e2/4 - 3*e2**2/64 - 5*e2**3/256) * lat_r
+        - (3*e2/8 + 3*e2**2/32 + 45*e2**3/1024) * math.sin(2 * lat_r)
+        + (15*e2**2/256 + 45*e2**3/1024) * math.sin(4 * lat_r)
+        - (35*e2**3/3072) * math.sin(6 * lat_r)
+    )
 
-# Read GeoJSON and project to UTM 19N for distance calculations in meters.
-try:
-    gdf_cbgs = gpd.read_file(GEOJSON_PATH, engine="pyogrio")
-except Exception:
-    # Fallback for environments where pyogrio is unavailable.
-    gdf_cbgs = gpd.read_file(GEOJSON_PATH)
-
-gdf_cbgs = gdf_cbgs.to_crs("EPSG:26919")
-
-gdf_cbgs.rename(
-    columns={
-        "GEOID10": "cbg_id",
-        "INTPTLAT10": "centroid_Y",
-        "INTPTLON10": "centroid_X",
-    },
-    inplace=True,
-)
-
-# Standardize column names across DataFrames.
-dist_matrix.rename(columns={"GEOID10": "cbg_id"}, inplace=True)
-visits.rename(columns={"visitor_home_cbg": "cbg_id"}, inplace=True)
-
-# Standardize CBG IDs to strings to prevent merge type conflicts.
-dist_matrix["cbg_id"] = dist_matrix["cbg_id"].astype(str)
-visits["cbg_id"] = visits["cbg_id"].astype(str)
-gdf_cbgs["cbg_id"] = gdf_cbgs["cbg_id"].astype(str)
-
-
-# ---------------------------------------------------------------------
-# Core Huff computation
-# ---------------------------------------------------------------------
-
-def huff(naics, X, Y, Aj, params, pois, dist_matrix, visits, geocbgs):
-    """
-    Estimate total predicted visits to a hypothetical new retail location.
-
-    Parameters
-    ----------
-    naics : int
-        NAICS code identifying the retail category.
-    X : float
-        Longitude of the candidate store in WGS84 (EPSG:4326).
-    Y : float
-        Latitude of the candidate store in WGS84 (EPSG:4326).
-    Aj : float
-        Floor area of the candidate store in square meters.
-    params : pd.DataFrame
-        Calibrated alpha/beta parameters per NAICS code.
-    pois : pd.DataFrame
-        POI table with floor area and NAICS codes.
-    dist_matrix : pd.DataFrame
-        Precomputed CBG-to-POI distance table in meters.
-    visits : pd.DataFrame
-        Observed CBG-to-POI visit counts.
-    geocbgs : gpd.GeoDataFrame
-        CBG polygons projected to UTM 19N (EPSG:26919).
-
-    Returns
-    -------
-    tuple
-        total_predicted_visits, market_share_proxy, competitors
-    """
-
-    # Step 1: Retrieve calibrated model parameters for the given NAICS.
-    matching_params = params.loc[params["NAICS code"] == naics]
-
-    if matching_params.empty:
-        raise ValueError(
-            f"No calibrated alpha/beta parameters found for NAICS code {naics}."
+    x = E0 + k0 * N * (
+        A
+        + (1 - T + C) * A**3 / 6
+        + (5 - 18*T + T**2 + 72*C - 58*(e2/(1-e2))) * A**5 / 120
+    )
+    y = k0 * (
+        M + N * math.tan(lat_r) * (
+            A**2 / 2
+            + (5 - T + 9*C + 4*C**2) * A**4 / 24
+            + (61 - 58*T + T**2 + 600*C - 330*(e2/(1-e2))) * A**6 / 720
         )
-
-    row = matching_params.iloc[0]
-    alpha, beta = row["alpha"], row["beta"]
-
-    # Step 2: Identify competing POIs in the same NAICS category.
-    naics_pois = pois[pois["naics_code"] == naics][
-        ["placekey", "wkt_area_sq_meters", "location_name", "latitude", "longitude"]
-    ].copy()
-
-    if naics_pois.empty:
-        raise ValueError(f"No competing POIs found for NAICS code {naics}.")
-
-    # Using a set improves isin(...) lookup speed.
-    relevant_placekeys = set(naics_pois["placekey"])
-
-    # Step 3: Build CBG × competitor-POI working table.
-    # Filter dist_matrix first to reduce merge size.
-    temp = dist_matrix[dist_matrix["placekey"].isin(relevant_placekeys)].merge(
-        naics_pois[["placekey", "wkt_area_sq_meters"]],
-        on="placekey",
     )
-
-    # Step 4: Join observed visit counts.
-    # Left join preserves all CBG-POI pairs. Missing observed visits are treated as 0.
-    relevant_visits = visits[visits["placekey"].isin(relevant_placekeys)]
-    temp = temp.merge(
-        relevant_visits[["cbg_id", "placekey", "visit_count"]],
-        on=["cbg_id", "placekey"],
-        how="left",
-    )
-    temp["visit_count"] = temp["visit_count"].fillna(0)
-
-    # Step 5: Compute attraction utility for each CBG-POI pair:
-    # Uik = Ak^alpha / dik^beta
-    # Distances are clipped at 100m to prevent division instability.
-    temp["uik"] = (
-        temp["wkt_area_sq_meters"] ** alpha
-    ) / ((temp["distance_m"].clip(lower=100)) ** beta)
-
-    # Step 6: Aggregate existing competitor utility and observed visits to CBG level.
-    temp = (
-        temp.groupby(["cbg_id"])[["uik", "visit_count"]]
-        .sum()
-        .reset_index()
-        .rename(columns={"uik": "sum_uik", "visit_count": "sum_visits"})
-    )
-
-    # CBGs with zero observed category visits are excluded.
-    temp = temp[temp["sum_visits"] != 0]
-
-    # Step 7: Compute distance from each CBG geometry to candidate store.
-    # Candidate location starts as WGS84 lon/lat and is projected to UTM 19N.
-    new_poi = Point(X, Y)
-    poi_gdf = gpd.GeoDataFrame([{"geometry": new_poi}], crs="EPSG:4326").to_crs(
-        "EPSG:26919"
-    )
-    projected_poi = poi_gdf.geometry.iloc[0]
-
-    cbg_geometry = geocbgs[["cbg_id", "geometry"]].copy()
-    cbg_geometry["distance"] = cbg_geometry["geometry"].distance(projected_poi)
-
-    temp = temp.merge(cbg_geometry[["cbg_id", "distance"]], on="cbg_id")
-
-    # Step 8: Compute candidate store utility:
-    # Uij = Aj^alpha / dij^beta
-    Aj_alpha = Aj ** alpha
-    temp["uij"] = Aj_alpha / ((temp["distance"].clip(lower=100)) ** beta)
-
-    # Step 9: Compute predicted visits from each CBG:
-    # Pij = Uij / (Uij + sum_Uik)
-    # predicted visits = Pij * observed category visits from that CBG
-    temp["predicted_visits"] = (
-        temp["uij"] * temp["sum_visits"]
-    ) / (temp["uij"] + temp["sum_uik"])
-
-    total_predicted_visits = float(temp["predicted_visits"].sum())
-
-    # Simple market-share proxy:
-    # candidate predicted visits divided by total observed visits used in the calculation.
-    total_market_visits = float(temp["sum_visits"].sum())
-    market_share_proxy = (
-        total_predicted_visits / total_market_visits
-        if total_market_visits > 0
-        else 0.0
-    )
-
-    # Competitor sample for map/table display.
-    # This is intentionally lightweight for the baseline dashboard.
-    # competitors aresample POIs from the same NAICS code as user input naics
-    competitors = (
-        naics_pois.head(20)
-        .fillna("")
-        .to_dict(orient="records")
-    )
-
-    cleaned_competitors = []
-    for comp in competitors:
-        cleaned_competitors.append(
-            {
-                "name": str(comp.get("location_name", "Unknown")),
-                "placekey": str(comp.get("placekey", "")),
-                "lat": _safe_float(comp.get("latitude")),
-                "lon": _safe_float(comp.get("longitude")),
-                "size": _safe_float(comp.get("wkt_area_sq_meters")),
-                "distance_miles": None,
-                "attraction": None,
-            }
-        )
-
-    return total_predicted_visits, market_share_proxy, cleaned_competitors
+    return x, y
 
 
-# ---------------------------------------------------------------------
-# App-facing wrapper
-# ---------------------------------------------------------------------
+# ─── Main inference function ──────────────────────────────────────────────────
 
 def run_huff_model(
     candidate_lat,
     candidate_lon,
     business_category,
     floor_area,
-    db_connection=None,
+    db_connection=None
 ):
     """
-    Required app-facing function.
-
-    The Flask app calls this function directly.
+    Run the Huff Gravity Model V3 for a candidate store location.
 
     Parameters
     ----------
-    candidate_lat : float
-        Candidate store latitude.
-    candidate_lon : float
-        Candidate store longitude.
-    business_category : str or int
-        For this baseline, this should be a NAICS code such as 4441.
-    floor_area : float
-        Candidate store floor area in square meters.
-    db_connection : optional
-        Reserved for team implementations that use Azure SQL directly.
+    candidate_lat      : float  — WGS84 latitude of the candidate store
+    candidate_lon      : float  — WGS84 longitude of the candidate store
+    business_category  : str    — top_category name or NAICS code (int or str)
+    floor_area         : float  — candidate store area in square meters
+    db_connection      : optional sqlite3 connection (uses DB_PATH if None)
 
     Returns
     -------
-    dict
-        Structured result used by the dashboard and chatbot.
+    dict with keys:
+        predicted_visits  float   — total predicted annual visits
+        market_share      float   — weighted average market share across CBGs
+        competitors       list    — top competitor businesses
+        runtime_ms        float   — execution time in milliseconds
+        notes             str     — model notes / warnings
     """
 
-    start_time = time.perf_counter()
+    start_time = time.time()
+    notes = []
+
+    # ── 1. Database connection ────────────────────────────────────────────────
+    own_connection = False
+    if db_connection is not None:
+        conn   = db_connection
+        cursor = conn.cursor()
+    else:
+        try:
+            # Read-only URI mode — safe on Azure network-mounted filesystem
+            uri  = f"file:{DB_PATH}?mode=ro&immutable=1"
+            conn = sqlite3.connect(uri, uri=True)
+        except Exception:
+            # Fallback: normal read-write connection (local development)
+            conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        own_connection = True
 
     try:
-        naics = int(str(business_category).strip())
-    except Exception as exc:
-        raise ValueError(
-            "business_category must be a NAICS code for this baseline, for example: 4441."
-        ) from exc
+        # ── 2. Parameter lookup (alpha, beta) ─────────────────────────────────
+        user_input = str(business_category).strip()
 
-    candidate_lat = float(candidate_lat)
-    candidate_lon = float(candidate_lon)
-    floor_area = float(floor_area)
+        cursor.execute("""
+            SELECT alpha, beta, top_category
+            FROM params
+            WHERE top_category = ?
+        """, (user_input,))
+        row = cursor.fetchone()
 
-    total_predicted_visits, market_share, competitors = huff(
-        naics=naics,
-        X=candidate_lon,
-        Y=candidate_lat,
-        Aj=floor_area,
-        params=params,
-        pois=pois,
-        dist_matrix=dist_matrix,
-        visits=visits,
-        geocbgs=gdf_cbgs,
-    )
+        if row is None:
+            try:
+                naics_int = int(user_input)
+                cursor.execute("""
+                    SELECT alpha, beta, top_category
+                    FROM params
+                    WHERE naics_code = ?
+                """, (naics_int,))
+                row = cursor.fetchone()
+            except ValueError:
+                pass
 
-    runtime_ms = round((time.perf_counter() - start_time) * 1000, 2)
+        if row is None:
+            alpha            = 1.0
+            beta             = 2.0
+            matched_category = user_input
+            notes.append(
+                f"Category '{user_input}' not found in params. "
+                f"Using default alpha=1.0, beta=2.0."
+            )
+        else:
+            alpha            = row[0]
+            beta             = row[1]
+            matched_category = row[2]
 
-    return {
-        "predicted_visits": round(total_predicted_visits, 2),
-        "market_share": round(market_share, 6),
-        "competitors": competitors,
-        "runtime_ms": runtime_ms,
-        "notes": (
-            "Baseline Huff model completed successfully. "
-            "This version uses local CSV/GeoJSON files loaded from the Data folder. "
-            "Teams may optimize this implementation by migrating data to Azure SQL, "
-            "adding indexes, precomputing intermediate tables, and improving runtime."
-        ),
-        "inputs": {
-            "candidate_lat": candidate_lat,
-            "candidate_lon": candidate_lon,
-            "business_category": naics,
-            "floor_area": floor_area,
-        },
-    }
+        # ── 3. Project new store to UTM (one projection per query) ────────────
+        utm_x_new, utm_y_new = wgs84_to_utm_zone19n_nad83(
+            candidate_lat, candidate_lon
+        )
 
+        # ── 4. Fetch pre-stored CBG coordinates + vectorized distance ─────────
+        cursor.execute("""
+            SELECT geoid, utm_x, utm_y
+            FROM cbg_master
+        """)
+        cbg_rows = cursor.fetchall()
+        cbgs_df  = pd.DataFrame(cbg_rows, columns=["geoid", "utm_x", "utm_y"])
 
-def _safe_float(value):
-    try:
-        if value == "":
-            return None
-        return float(value)
-    except Exception:
-        return None
+        # NumPy C-level broadcast — no Python loop per CBG
+        dx = cbgs_df["utm_x"].values - utm_x_new
+        dy = cbgs_df["utm_y"].values - utm_y_new
+        cbgs_df["dist_to_new"] = np.maximum(np.sqrt(dx**2 + dy**2), 1.0)
 
+        # ── 5. Fetch pre-computed competitor utility (Competitor_Summary) ──────
+        # This single indexed lookup replaces ~4,768 per-query computations.
+        cursor.execute("""
+            SELECT geoid, sum_U_existing
+            FROM Competitor_Summary
+            WHERE top_category = ?
+        """, (matched_category,))
+        utility_rows = cursor.fetchall()
+        utility_df   = pd.DataFrame(utility_rows, columns=["geoid", "sum_U_existing"])
 
-# Local quick test, the result should be 16.99:
-# result = run_huff_model(
-#     candidate_lat=42.24,
-#     candidate_lon=-71.78,
-#     business_category=4441,
-#     floor_area=1000,
-# )
-# print(result)
+        cbgs_df = cbgs_df.merge(utility_df, on="geoid", how="left")
+        cbgs_df["sum_U_existing"] = cbgs_df["sum_U_existing"].fillna(0)
+
+        # ── 6. Huff Model: utility, probability, predicted visits ─────────────
+        cbgs_df["U_new"] = (floor_area ** alpha) / (cbgs_df["dist_to_new"] ** beta)
+
+        total_U          = cbgs_df["U_new"] + cbgs_df["sum_U_existing"]
+        cbgs_df["P_new"] = np.where(total_U > 0, cbgs_df["U_new"] / total_U, 0)
+
+        # Fetch historical demand per CBG for this category
+        cursor.execute("""
+            SELECT s.geoid, SUM(s.visit_count) AS total_demand
+            FROM cbg_poi_stats s
+            JOIN pois p ON s.placekey = p.placekey
+            WHERE p.top_category = ?
+            GROUP BY s.geoid
+        """, (matched_category,))
+        demand_rows = cursor.fetchall()
+        demand_df   = pd.DataFrame(demand_rows, columns=["geoid", "total_demand"])
+
+        cbgs_df = cbgs_df.merge(demand_df, on="geoid", how="left")
+        cbgs_df["total_demand"]     = cbgs_df["total_demand"].fillna(0)
+        cbgs_df["predicted_visits"] = cbgs_df["P_new"] * cbgs_df["total_demand"]
+
+        total_visits  = round(float(cbgs_df["predicted_visits"].sum()), 2)
+        total_demand  = float(cbgs_df["total_demand"].sum())
+
+        # Weighted average market share across CBGs with demand
+        active = cbgs_df[cbgs_df["total_demand"] > 0]
+        if len(active) > 0 and total_demand > 0:
+            market_share = round(
+                float((active["P_new"] * active["total_demand"]).sum() / total_demand),
+                6
+            )
+        else:
+            market_share = 0.0
+
+        # ── 7. Build competitor list ──────────────────────────────────────────
+        # Top competitors by utility score, with distance in miles
+        cursor.execute("""
+            SELECT p.placekey,
+                   p.top_category,
+                   p.naics_code,
+                   p.area_sq_meters,
+                   p.utm_x,
+                   p.utm_y
+            FROM pois p
+            WHERE p.top_category = ?
+            LIMIT 50
+        """, (matched_category,))
+        comp_rows = cursor.fetchall()
+
+        competitors = []
+        for cr in comp_rows:
+            placekey, top_cat, naics, area, c_utm_x, c_utm_y = cr
+            if c_utm_x is None or c_utm_y is None:
+                continue
+            dist_m     = max(math.sqrt((c_utm_x - utm_x_new)**2 +
+                                       (c_utm_y - utm_y_new)**2), 1.0)
+            dist_miles = round(dist_m / 1609.34, 3)
+            attraction = round(
+                (area ** alpha) / (dist_m ** beta) if area else 0.0, 4
+            )
+            competitors.append({
+                "name":           top_cat,
+                "placekey":       placekey,
+                "naics_code":     naics,
+                "size":           round(float(area), 1) if area else 0.0,
+                "distance_miles": dist_miles,
+                "attraction":     attraction,
+            })
+
+        # Sort by attraction (highest first), keep top 10
+        competitors.sort(key=lambda x: x["attraction"], reverse=True)
+        competitors = competitors[:10]
+
+        # ── 8. Timing ─────────────────────────────────────────────────────────
+        runtime_ms = round((time.time() - start_time) * 1000, 2)
+
+        return {
+            "predicted_visits": total_visits,
+            "market_share":     market_share,
+            "competitors":      competitors,
+            "runtime_ms":       runtime_ms,
+            "notes":            " | ".join(notes) if notes else
+                                f"V3 DB engine · matched category: {matched_category}",
+            "inputs": {
+                "candidate_lat":     candidate_lat,
+                "candidate_lon":     candidate_lon,
+                "business_category": business_category,
+                "floor_area":        floor_area,
+            },
+        }
+
+    finally:
+        # Only close the connection if we opened it ourselves
+        if own_connection:
+            conn.close()
