@@ -212,7 +212,9 @@ def run_migration():
         }
 
     except Exception as e:
+        import traceback
         return {
-            "ok": False,
-            "error": str(e),
+            "ok":     False,
+            "error":  str(e),
+            "detail": traceback.format_exc(),
         }
