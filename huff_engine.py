@@ -3,15 +3,12 @@ huff_engine.py  —  Huff Gravity Model V3
 ALY 6080 · Integrated Experiential Learning · Team 2
 """
 
-import sqlite3
 import math
 import time
 import os
 import numpy as np
 import pandas as pd
-
-# ─── Database path ───────────────────────────────────────────────────────────
-DB_PATH = os.path.join("Data", "urban_ai_v2.db")
+from db import get_connection
 
 # ─── UTM Projection Function (EPSG:26919 — NAD83 UTM Zone 19N) ───────────────
 
@@ -92,13 +89,7 @@ def run_huff_model(
         conn   = db_connection
         cursor = conn.cursor()
     else:
-        try:
-            # Read-only URI mode — safe on Azure network-mounted filesystem
-            uri  = f"file:{DB_PATH}?mode=ro&immutable=1"
-            conn = sqlite3.connect(uri, uri=True)
-        except Exception:
-            # Fallback: normal read-write connection (local development)
-            conn = sqlite3.connect(DB_PATH)
+        conn   = get_connection()
         cursor = conn.cursor()
         own_connection = True
 

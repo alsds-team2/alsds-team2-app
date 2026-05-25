@@ -1,8 +1,7 @@
 import os
 from flask import Flask, request, jsonify, render_template
 from openai import AzureOpenAI
-
-from db import test_connection
+from db import test_connection, get_connection
 
 app = Flask(__name__)
 
@@ -18,7 +17,6 @@ client = AzureOpenAI(
 )
 
 DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT")
-
 
 # -------------------------
 # Routes
@@ -42,6 +40,52 @@ def dbcheck():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+# -------------------------
+# Admin: Migration
+# -------------------------
+
+@app.route("/admin/migrate")
+def admin_migrate():
+    try:
+        from migrate_to_azure_sql import run_migration
+        result = run_migration()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# -------------------------
+# DB Structure Verification
+# -------------------------
+
+@app.route("/db_structure")
+def db_structure():
+    try:
+        conn   = get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT TABLE_NAME
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_TYPE = 'BASE TABLE'
+            ORDER BY TABLE_NAME
+        """)
+        tables = [row[0] for row in cursor.fetchall()]
+
+        result = []
+        for table in tables:
+            cursor.execute(f"SELECT COUNT(*) FROM [{table}]")
+            count = cursor.fetchone()[0]
+            result.append({
+                "TABLE_NAME": table,
+                "row_count":  count
+            })
+
+        conn.close()
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 # -------------------------
 # Run Huff Model
