@@ -130,7 +130,11 @@ def get_azure_conn():
     conn_str = os.getenv("SQL_CONNECTION_STRING")
     if not conn_str:
         raise EnvironmentError("SQL_CONNECTION_STRING is not set.")
-    return pyodbc.connect(conn_str, timeout=30)
+    conn = pyodbc.connect(conn_str, timeout=60)
+    conn.setdecoding(pyodbc.SQL_CHAR, encoding='utf-8')
+    conn.setdecoding(pyodbc.SQL_WCHAR, encoding='utf-16le')
+    conn.setencoding(str, encoding='utf-16le')
+    return conn
 
 
 def drop_tables(azure_cursor, azure_conn):
@@ -153,21 +157,34 @@ def migrate_table(table_name, sqlite_conn, azure_conn):
     df = pd.read_sql(f'SELECT * FROM "{table_name}"', sqlite_conn)
     total_rows = len(df)
 
-    azure_cursor  = azure_conn.cursor()
-    cols = ", ".join([f"[{c}]" for c in df.columns])
-    placeholders  = ", ".join(["?" for _ in df.columns])
-    insert_sql = f"INSERT INTO [{table_name}] ({cols}) VALUES ({placeholders})"
+    azure_cursor = azure_conn.cursor()
+    cols         = ", ".join([f"[{c}]" for c in df.columns])
+    placeholders = ", ".join(["?" for _ in df.columns])
+    insert_sql   = f"INSERT INTO [{table_name}] ({cols}) VALUES ({placeholders})"
+
+    current_chunk_size = 500 if table_name in ["cbg_geometries", "cbg_poi_stats"] else CHUNK_SIZE
 
     inserted = 0
-    for chunk_start in range(0, total_rows, CHUNK_SIZE):
-        chunk = df.iloc[chunk_start: chunk_start + CHUNK_SIZE]
+    for chunk_start in range(0, total_rows, current_chunk_size):
+        chunk = df.iloc[chunk_start: chunk_start + current_chunk_size]
         rows  = [
             tuple(None if pd.isna(v) else v for v in row)
             for row in chunk.itertuples(index=False)
         ]
-        azure_cursor.executemany(insert_sql, rows)
-        azure_conn.commit()
-        inserted += len(rows)
+        try:
+            azure_cursor.executemany(insert_sql, rows)
+            azure_conn.commit()
+            inserted += len(rows)
+        except pyodbc.Error as db_err:
+            for row in rows:
+                try:
+                    azure_cursor.execute(insert_sql, row)
+                    azure_conn.commit()
+                    inserted += 1
+                except Exception as row_err:
+                    raise RuntimeError(
+                        f"Bad data in {table_name}: {row}. Error: {row_err}"
+                    ) from db_err
 
     return inserted
 
