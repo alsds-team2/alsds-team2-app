@@ -152,9 +152,12 @@ def create_tables(azure_cursor, azure_conn):
         azure_conn.commit()
 
 
-def migrate_table(table_name, sqlite_conn, azure_conn):
+def migrate_table(table_name, sqlite_conn, azure_conn, offset=0, limit=None):
     """Read all rows from SQLite and insert into Azure SQL in chunks."""
-    df = pd.read_sql(f'SELECT * FROM "{table_name}"', sqlite_conn)
+    query = f'SELECT * FROM "{table_name}"'
+    if limit:
+        query += f' LIMIT {limit} OFFSET {offset}'
+    df = pd.read_sql(query, sqlite_conn)
     total_rows = len(df)
 
     azure_cursor = azure_conn.cursor()
@@ -191,7 +194,7 @@ def migrate_table(table_name, sqlite_conn, azure_conn):
 
 # ─── Main function called by /admin/migrate ───────────────────────────────────
 
-def run_migration(table=None):
+def run_migration(table=None, offset=0, limit=50000):
     """
     Migrate all tables from SQLite to Azure SQL.
     Returns a dict with migration results for JSON response.
@@ -215,7 +218,7 @@ def run_migration(table=None):
                 except:
                     azure_cursor.execute(CREATE_STATEMENTS[table])
             azure_conn.commit()
-            count = migrate_table(table, sqlite_conn, azure_conn)
+            count = migrate_table(table, sqlite_conn, azure_conn, offset=offset, limit=limit)
             rows_inserted[table] = count
         else:
             drop_tables(azure_cursor, azure_conn)
