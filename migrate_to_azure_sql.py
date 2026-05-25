@@ -52,7 +52,7 @@ CREATE_STATEMENTS = {
 
     "cbg_master": """
         CREATE TABLE cbg_master (
-            geoid           INT             PRIMARY KEY,
+            geoid           BIGINT             PRIMARY KEY,
             population      FLOAT,
             median_income   FLOAT,
             median_age      FLOAT,
@@ -76,7 +76,7 @@ CREATE_STATEMENTS = {
 
     "cbg_poi_stats": """
         CREATE TABLE cbg_poi_stats (
-            geoid           INT,
+            geoid           BIGINT,
             placekey        NVARCHAR(255),
             top_category    NVARCHAR(255),
             naics_code      INT,
@@ -90,7 +90,7 @@ CREATE_STATEMENTS = {
 
     "Competitor_Summary": """
         CREATE TABLE Competitor_Summary (
-            geoid           INT,
+            geoid           BIGINT,
             top_category    NVARCHAR(255),
             naics_code      INT,
             sum_U_existing  FLOAT,
@@ -111,7 +111,7 @@ CREATE_STATEMENTS = {
 
     "cbg_geometries": """
         CREATE TABLE cbg_geometries (
-            geoid       INT             PRIMARY KEY,
+            geoid       BIGINT             PRIMARY KEY,
             geometry    NVARCHAR(MAX),
             FOREIGN KEY (geoid) REFERENCES cbg_master(geoid)
         )
