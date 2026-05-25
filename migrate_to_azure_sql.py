@@ -209,8 +209,11 @@ def run_migration(table=None):
         if table:
             try:
                 azure_cursor.execute(f"TRUNCATE TABLE [{table}]")
-            except:
-                azure_cursor.execute(CREATE_STATEMENTS[table])
+            except pyodbc.ProgrammingError:
+                try:
+                    azure_cursor.execute(f"DELETE FROM [{table}]")
+                except:
+                    azure_cursor.execute(CREATE_STATEMENTS[table])
             azure_conn.commit()
             count = migrate_table(table, sqlite_conn, azure_conn)
             rows_inserted[table] = count
