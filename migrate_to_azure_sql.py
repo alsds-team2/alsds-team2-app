@@ -196,8 +196,6 @@ def run_migration(table=None):
     Migrate all tables from SQLite to Azure SQL.
     Returns a dict with migration results for JSON response.
     """
-    return {"ok": True, "debug": f"table={repr(table)}", "type": str(type(table)), "mode": "single" if table else "full"}
-
     start = time.time()
     rows_inserted = {}
 
