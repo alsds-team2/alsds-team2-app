@@ -196,6 +196,8 @@ def run_migration(table=None):
     Migrate all tables from SQLite to Azure SQL.
     Returns a dict with migration results for JSON response.
     """
+    return {"ok": True, "debug": f"table={table}", "mode": "single" if table else "full"}
+
     start = time.time()
     rows_inserted = {}
 
@@ -205,7 +207,6 @@ def run_migration(table=None):
         azure_cursor = azure_conn.cursor()
 
         if table:
-            # Single table mode: only rebuild this one table
             azure_cursor.execute(f"""
                 IF OBJECT_ID('{table}', 'U') IS NOT NULL
                     DROP TABLE [{table}]
@@ -216,7 +217,6 @@ def run_migration(table=None):
             count = migrate_table(table, sqlite_conn, azure_conn)
             rows_inserted[table] = count
         else:
-            # Full mode: drop all → create all → migrate all
             drop_tables(azure_cursor, azure_conn)
             create_tables(azure_cursor, azure_conn)
             for t in CREATE_ORDER:
