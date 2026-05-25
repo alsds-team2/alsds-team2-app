@@ -174,7 +174,7 @@ def migrate_table(table_name, sqlite_conn, azure_conn):
 
 # ─── Main function called by /admin/migrate ───────────────────────────────────
 
-def run_migration():
+def run_migration(table=None):
     """
     Migrate all tables from SQLite to Azure SQL.
     Returns a dict with migration results for JSON response.
@@ -183,20 +183,28 @@ def run_migration():
     rows_inserted = {}
 
     try:
-        sqlite_conn = get_sqlite_conn()
-        azure_conn  = get_azure_conn()
+        sqlite_conn  = get_sqlite_conn()
+        azure_conn   = get_azure_conn()
         azure_cursor = azure_conn.cursor()
 
-        # Drop existing tables (clean rebuild)
-        drop_tables(azure_cursor, azure_conn)
-
-        # Create tables with correct schema
-        create_tables(azure_cursor, azure_conn)
-
-        # Migrate each table
-        for table in CREATE_ORDER:
+        if table:
+            # Single table mode: only rebuild this one table
+            azure_cursor.execute(f"""
+                IF OBJECT_ID('{table}', 'U') IS NOT NULL
+                    DROP TABLE [{table}]
+            """)
+            azure_conn.commit()
+            azure_cursor.execute(CREATE_STATEMENTS[table])
+            azure_conn.commit()
             count = migrate_table(table, sqlite_conn, azure_conn)
             rows_inserted[table] = count
+        else:
+            # Full mode: drop all → create all → migrate all
+            drop_tables(azure_cursor, azure_conn)
+            create_tables(azure_cursor, azure_conn)
+            for t in CREATE_ORDER:
+                count = migrate_table(t, sqlite_conn, azure_conn)
+                rows_inserted[t] = count
 
         sqlite_conn.close()
         azure_conn.close()
@@ -204,11 +212,11 @@ def run_migration():
         elapsed = round(time.time() - start, 1)
 
         return {
-            "ok": True,
-            "message": "Migration completed successfully",
-            "tables_created": CREATE_ORDER,
-            "rows_inserted": rows_inserted,
-            "elapsed_sec": elapsed,
+            "ok":             True,
+            "message":        "Migration completed successfully",
+            "tables_created": [table] if table else CREATE_ORDER,
+            "rows_inserted":  rows_inserted,
+            "elapsed_sec":    elapsed,
         }
 
     except Exception as e:
