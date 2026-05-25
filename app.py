@@ -48,7 +48,7 @@ def dbcheck():
 def admin_migrate():
     try:
         table = request.args.get("table")
-        return jsonify({"debug_app": f"table={table}"})  # ← 加這行
+        return jsonify({"debug_app": f"table={table}"})
         from migrate_to_azure_sql import run_migration
         result = run_migration(table=table)
         return jsonify(result)
