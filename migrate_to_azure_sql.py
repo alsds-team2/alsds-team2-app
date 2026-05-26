@@ -207,14 +207,17 @@ def run_migration(table=None, offset=0, limit=50000):
         azure_cursor = azure_conn.cursor()
 
         if table:
-            try:
-                azure_cursor.execute(f"TRUNCATE TABLE [{table}]")
-            except pyodbc.ProgrammingError:
+            if offset == 0:
+                # First batch: clear existing data
                 try:
-                    azure_cursor.execute(f"DELETE FROM [{table}]")
-                except:
-                    azure_cursor.execute(CREATE_STATEMENTS[table])
-            azure_conn.commit()
+                    azure_cursor.execute(f"TRUNCATE TABLE [{table}]")
+                except pyodbc.ProgrammingError:
+                    try:
+                        azure_cursor.execute(f"DELETE FROM [{table}]")
+                    except:
+                        azure_cursor.execute(CREATE_STATEMENTS[table])
+                azure_conn.commit()
+            # offset > 0: just append, don't clear
             count = migrate_table(table, sqlite_conn, azure_conn, offset=offset, limit=limit)
             rows_inserted[table] = count
         else:
