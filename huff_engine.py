@@ -140,7 +140,10 @@ def run_huff_model(
             FROM cbg_master
         """)
         cbg_rows = cursor.fetchall()
-        cbgs_df  = pd.DataFrame(cbg_rows, columns=["geoid", "utm_x", "utm_y"])
+        cbgs_df  = pd.DataFrame(
+            [tuple(row) for row in cbg_rows],
+            columns=["geoid", "utm_x", "utm_y"]
+        )
 
         # NumPy C-level broadcast — no Python loop per CBG
         dx = cbgs_df["utm_x"].values - utm_x_new
@@ -155,7 +158,10 @@ def run_huff_model(
             WHERE top_category = ?
         """, (matched_category,))
         utility_rows = cursor.fetchall()
-        utility_df   = pd.DataFrame(utility_rows, columns=["geoid", "sum_U_existing"])
+        utility_df   = pd.DataFrame(
+            [tuple(row) for row in utility_rows],
+            columns=["geoid", "sum_U_existing"]
+        )
 
         cbgs_df = cbgs_df.merge(utility_df, on="geoid", how="left")
         cbgs_df["sum_U_existing"] = cbgs_df["sum_U_existing"].fillna(0)
@@ -175,7 +181,10 @@ def run_huff_model(
             GROUP BY s.geoid
         """, (matched_category,))
         demand_rows = cursor.fetchall()
-        demand_df   = pd.DataFrame(demand_rows, columns=["geoid", "total_demand"])
+        demand_df   = pd.DataFrame(
+            [tuple(row) for row in demand_rows],
+            columns=["geoid", "total_demand"]
+        )
 
         cbgs_df = cbgs_df.merge(demand_df, on="geoid", how="left")
         cbgs_df["total_demand"]     = cbgs_df["total_demand"].fillna(0)
