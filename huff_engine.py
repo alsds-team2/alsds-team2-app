@@ -197,15 +197,15 @@ def run_huff_model(
         # ── 7. Build competitor list ──────────────────────────────────────────
         # Top competitors by utility score, with distance in miles
         cursor.execute("""
-            SELECT p.placekey,
-                   p.top_category,
-                   p.naics_code,
-                   p.area_sq_meters,
-                   p.utm_x,
-                   p.utm_y
+            SELECT TOP 50
+                p.placekey,
+                p.top_category,
+                p.naics_code,
+                p.area_sq_meters,
+                p.utm_x,
+                p.utm_y
             FROM pois p
             WHERE p.top_category = ?
-            LIMIT 50
         """, (matched_category,))
         comp_rows = cursor.fetchall()
 
