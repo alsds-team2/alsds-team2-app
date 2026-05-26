@@ -157,6 +157,7 @@ def migrate_table(table_name, sqlite_conn, azure_conn, offset=0, limit=None):
     total_rows = len(df)
 
     azure_cursor = azure_conn.cursor()
+    azure_cursor.fast_executemany = True
     cols         = ", ".join([f"[{c}]" for c in df.columns])
     placeholders = ", ".join(["?" for _ in df.columns])
     insert_sql   = f"INSERT INTO [{table_name}] ({cols}) VALUES ({placeholders})"
