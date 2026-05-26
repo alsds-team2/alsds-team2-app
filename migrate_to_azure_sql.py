@@ -130,11 +130,7 @@ def get_azure_conn():
     conn_str = os.getenv("SQL_CONNECTION_STRING")
     if not conn_str:
         raise EnvironmentError("SQL_CONNECTION_STRING is not set.")
-    conn = pyodbc.connect(conn_str, timeout=60)
-    conn.setdecoding(pyodbc.SQL_CHAR, encoding='utf-8')
-    conn.setdecoding(pyodbc.SQL_WCHAR, encoding='utf-16le')
-    conn.setencoding(encoding='utf-16le')
-    return conn
+    return pyodbc.connect(conn_str, timeout=60)
 
 
 def drop_tables(azure_cursor, azure_conn):
