@@ -1,6 +1,7 @@
 import os
 from flask import Flask, request, jsonify, render_template
 from openai import AzureOpenAI
+import json
 from db import test_connection, get_connection
 
 app = Flask(__name__)
@@ -258,7 +259,12 @@ def api_resolve_naics():
 
         raw = response.choices[0].message.content.strip()
 
-        import json
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
+
         parsed = json.loads(raw)
 
         naics_code = str(parsed.get("naics_code", "")).strip()
