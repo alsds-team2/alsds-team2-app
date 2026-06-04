@@ -192,6 +192,101 @@ def api_ask():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+NAICS_WHITELIST = {
+    "3399": "Other Miscellaneous Manufacturing",
+    "4441": "Building Material and Supplies Dealers",
+    "6214": "Outpatient Care Centers",
+    "311811": "Bakeries and Tortilla Manufacturing",
+    "441310": "Automotive Parts, Accessories, and Tire Stores",
+    "445310": "Beer, Wine, and Liquor Stores",
+    "447110": "Gasoline Stations",
+    "448310": "Jewelry, Luggage, and Leather Goods Stores",
+    "452319": "General Merchandise Stores, including Warehouse Clubs and Supercenters",
+    "453991": "Other Miscellaneous Store Retailers",
+    "512240": "Sound Recording Industries",
+    "517312": "Wired and Wireless Telecommunications Carriers",
+    "522110": "Depository Credit Intermediation",
+    "522310": "Activities Related to Credit Intermediation",
+    "523930": "Other Financial Investment Activities",
+    "524113": "Insurance Carriers",
+    "531120": "Lessors of Real Estate",
+    "531210": "Offices of Real Estate Agents and Brokers",
+    "611310": "Colleges, Universities, and Professional Schools",
+    "621210": "Offices of Dentists",
+    "621511": "Medical and Diagnostic Laboratories",
+    "812910": "Other Personal Services",
+    "922110": "Justice, Public Order, and Safety Activities"
+}
+
+@app.route("/api/resolve_naics", methods=["POST"])
+def api_resolve_naics():
+    try:
+        data = request.get_json(silent=True) or {}
+        user_input = data.get("user_input", "").strip()
+
+        if not user_input:
+            return jsonify({"ok": False, "error": "No input provided."}), 400
+
+        whitelist_text = "\n".join(
+            f"{code}: {name}" for code, name in NAICS_WHITELIST.items()
+        )
+
+        response = client.chat.completions.create(
+            model=DEPLOYMENT,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a NAICS code classifier. "
+                        "Given a business description, return the single best matching NAICS code "
+                        "from the provided whitelist. "
+                        "Respond ONLY with a JSON object in this exact format, no extra text:\n"
+                        '{"naics_code": "4441", "category_name": "Building Material and Supplies Dealers", "confidence": "high"}\n'
+                        "If no match is reasonable, set confidence to 'low'."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"Business description: {user_input}\n\n"
+                        f"Available NAICS codes:\n{whitelist_text}"
+                    )
+                }
+            ],
+            temperature=0.1
+        )
+
+        raw = response.choices[0].message.content.strip()
+
+        import json
+        parsed = json.loads(raw)
+
+        naics_code = str(parsed.get("naics_code", "")).strip()
+        category_name = parsed.get("category_name", "")
+        confidence = parsed.get("confidence", "low")
+
+        if naics_code not in NAICS_WHITELIST:
+            return jsonify({
+                "ok": False,
+                "error": f"No matching business category found for: {user_input}. Please try a different description."
+            }), 400
+
+        if confidence == "low":
+            return jsonify({
+                "ok": True,
+                "naics_code": naics_code,
+                "category_name": category_name,
+                "warning": "Low confidence match. Please confirm this is the right category."
+            })
+
+        return jsonify({
+            "ok": True,
+            "naics_code": naics_code,
+            "category_name": category_name
+        })
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 # -------------------------
 # Helper Functions
