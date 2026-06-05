@@ -13,7 +13,7 @@ const state = {
 
 addBotMessage(
   "Welcome. I will guide you through a store-location scenario for Worcester, MA. " +
-  "First, enter the business NAICS code. For example: 4441."
+  "First, what type of business are you planning to open? For example: hardware store, grocery store, or pharmacy."
 );
 
 sendBtn.addEventListener("click", handleSend);
@@ -61,20 +61,34 @@ async function handleSend() {
     }
 
     if (state.step === "category") {
-      const naicsCode = text.trim();
+      const response = await fetch("/api/resolve_naics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_input: text.trim() })
+      });
 
-      if (!/^\d+$/.test(naicsCode)) {
-        addBotMessage("Please enter a numeric NAICS code. For example: 4441.");
+      const data = await response.json();
+
+      if (!data.ok) {
+        addBotMessage(data.error || "I could not recognize that business type. Please try again.");
         return;
       }
 
-      state.business_category = naicsCode;
-      state.step = "location";
+      state.business_category = data.naics_code;
 
-      addBotMessage(
-        "Good. Now click the proposed store location on the map. " +
-        "You can also type coordinates as: 42.24, -71.78"
-      );
+      if (data.warning) {
+        addBotMessage(
+          `I matched your input to: ${data.category_name} (NAICS ${data.naics_code}). ` +
+          `I'm not fully confident in this match — please confirm this is correct before continuing.`
+        );
+      } else {
+        addBotMessage(
+          `Got it — ${data.category_name} (NAICS ${data.naics_code}). ` +
+          "Now click the proposed store location on the map, or type coordinates as: 42.24, -71.78"
+        );
+      }
+
+      state.step = "location";
       return;
     }
 
