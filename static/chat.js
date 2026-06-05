@@ -8,7 +8,10 @@ const state = {
   candidate_lat: null,
   candidate_lon: null,
   floor_area: null,
-  last_result: null
+  last_result: null,
+  last_business_category: null,
+  last_floor_area: null,
+  scenario_count: 0
 };
 
 addBotMessage(
@@ -134,6 +137,26 @@ async function handleSend() {
     }
 
     if (state.step === "ready") {
+      const coords = parseCoordinates(text);
+
+      if (coords && state.last_business_category && state.last_floor_area) {
+        state.business_category = state.last_business_category;
+        state.floor_area = state.last_floor_area;
+        state.candidate_lat = coords.lat;
+        state.candidate_lon = coords.lon;
+
+        if (window.setCandidateLocation) {
+          window.setCandidateLocation(coords.lat, coords.lon, false);
+        }
+
+        addBotMessage(
+          `Running again with the same business type and floor area at the new location (${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}).`
+        );
+
+        await runModel();
+        return;
+      }
+
       await askQuestion(text);
       return;
     }
@@ -189,6 +212,9 @@ async function runModel() {
   }
 
   state.last_result = data.result;
+  state.last_business_category = state.business_category;
+  state.last_floor_area = state.floor_area;
+  state.scenario_count += 1;
 
   renderResult(data.result);
 
