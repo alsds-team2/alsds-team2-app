@@ -327,21 +327,15 @@ def safe_competitor_sample(result, n=3):
 
 def generate_explanation(result):
     prompt = f"""
-You are an expert in retail location analytics.
-
 A Huff-style gravity model has been run with the following results:
 
 Predicted visits: {result.get("predicted_visits")}
 Market share: {result.get("market_share")}
-Runtime (ms): {result.get("runtime_ms")}
 
 Competitors (sample):
 {safe_competitor_sample(result, 3)}
 
-Explain clearly:
-1. What the predicted visits and market share mean
-2. What factors likely influenced the result
-3. Keep it short and intuitive, about 3-5 sentences
+Explain what these results mean for a business owner considering this location.
 """
 
     response = client.chat.completions.create(
@@ -349,7 +343,14 @@ Explain clearly:
         messages=[
             {
                 "role": "system",
-                "content": "You explain retail analytics and Huff model results clearly for students."
+                "content": (
+                    "You are a location decision support assistant. "
+                    "Explain results in plain language that a business owner would understand. "
+                    "Do not use markdown formatting like bold or bullet points. "
+                    "Keep the response to 3-5 sentences. "
+                    "Always mention that the model does not include rent, zoning, or parking. "
+                    "Never claim a location is guaranteed to succeed."
+                )
             },
             {
                 "role": "user",
