@@ -14,8 +14,10 @@ const state = {
   scenario_count: 0
 };
 
+setStep(1);
+
 addBotMessage(
-  "Welcome. I will guide you through a store-location scenario for Worcester, MA. " +
+  "Welcome. I'm Lara, your personal agent. I will guide you through a store-location scenario for Worcester, MA. " +
   "First, what type of business are you planning to open? For example: hardware store, grocery store, or pharmacy."
 );
 
@@ -37,6 +39,7 @@ window.onMapLocationSelected = function (location) {
       "Now enter the proposed store floor area in square meters."
     );
     state.step = "floor_area";
+    setStep(3);
   }
 };
 
@@ -92,6 +95,7 @@ async function handleSend() {
       }
 
       state.step = "location";
+      setStep(2);
       return;
     }
 
@@ -111,6 +115,7 @@ async function handleSend() {
       }
 
       state.step = "floor_area";
+      setStep(3);
       addBotMessage("Great. Now enter the proposed store floor area in square meters.");
       return;
     }
@@ -125,6 +130,8 @@ async function handleSend() {
 
       state.floor_area = area;
       state.step = "ready";
+      /*set 4 step tell user the progress*/
+      setStep(4);
 
       addBotMessage(
         `Thanks. I will run the Huff model for NAICS ${state.business_category}, ` +
@@ -171,6 +178,7 @@ async function rerunModelFromMessage(inputs) {
   state.candidate_lon = inputs.candidate_lon;
   state.floor_area = inputs.floor_area;
   state.step = "ready";
+  setStep(4);
 
   addBotMessage(
     `I found a new complete model input set. I will rerun the Huff model for NAICS ${state.business_category}, ` +
@@ -305,6 +313,14 @@ function renderResult(result) {
     <strong>Runtime:</strong> ${escapeHtml(runtime)} ms<br>
     <strong>Notes:</strong> ${escapeHtml(notes)}
   `;
+  /*add function to display metric cards*/
+  if (typeof showMetricCards === "function") {
+    showMetricCards(
+      typeof predictedVisits === "number" ? predictedVisits.toFixed(1) : predictedVisits,
+      Number.isFinite(marketShare) ? (marketShare * 100).toFixed(2) + "%" : "N/A",
+      Array.isArray(result.competitors) ? result.competitors.length : "N/A"
+    );
+  }
 
   const competitors = Array.isArray(result.competitors) ? result.competitors : [];
 
@@ -362,6 +378,7 @@ function parseCoordinates(text) {
 
   return { lat, lon };
 }
+
 
 function addBotMessage(text) {
   addMessage(text, "bot");
