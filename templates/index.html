@@ -2,28 +2,109 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>AI-Assisted Location Decision Support System</title>
+  <title>Where Should Your Store Go?</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="/static/styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 </head>
 
 <body>
   <header>
-    <h1>AI-Assisted Location Decision Support System</h1>
-    <h2>This is Team 2 App</h2>
-    <p>Worcester, MA | Huff Model Prototype</p>
+    <div class="header-left">
+      
+      <div>
+        <h1>Sitewise</h1>
+        <h2>Worcester, MA &nbsp;·&nbsp; Team 2</h2>
+      </div>
+    </div>
+    <div class="header-badges">
+      <span class="badge">Huff Model</span>
+      <span class="badge badge-purple">LARA</span>
+    </div>
   </header>
 
   <main class="layout">
+
+    <div class="left-col">
+      <section class="panel map-panel">
+        <h2>Map</h2>
+        <div id="map"></div>
+        <div id="selectedLocation" class="selected-location">
+          No candidate location selected yet.
+        </div>
+      </section>
+
+      <section class="panel result-panel">
+        <h2>Model Result</h2>
+
+        <div id="metricCards" class="metric-cards" style="display:none">
+          <div class="metric-card">
+            <div class="metric-label">Predicted visits</div>
+            <div class="metric-value" id="metricVisits">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Market share</div>
+            <div class="metric-value" id="metricShare">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Competitors nearby</div>
+            <div class="metric-value neutral" id="metricComps">—</div>
+          </div>
+        </div>
+
+        <div id="resultSummary" class="result-summary">
+          No model result yet.
+        </div>
+
+        <h3>Nearby competitors / attraction scores</h3>
+        <div id="competitorTable" class="table-wrap"></div>
+      </section>
+    </div>
+
     <section class="panel chat-panel">
-      <h2>Guided Chatbot</h2>
+      <div class="lara-header">
+        <div class="lara-avatar">L</div>
+        <div>
+          <div class="lara-name">LARA</div>
+          <div class="lara-status">
+            <span class="online-dot"></span>Location Analysis &amp; Recommendation Agent
+          </div>
+        </div>
+      </div>
+
+      <div class="step-bar">
+        <div class="step idle" id="step1">
+          <div class="step-dot">1</div>
+          <div class="step-label">Category</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step idle" id="step2">
+          <div class="step-dot">2</div>
+          <div class="step-label">Location</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step idle" id="step3">
+          <div class="step-dot">3</div>
+          <div class="step-label">Size</div>
+        </div>
+        <div class="step-line"></div>
+        <div class="step idle" id="step4">
+          <div class="step-dot">4</div>
+          <div class="step-label">Results</div>
+        </div>
+      </div>
 
       <div id="chatMessages" class="chat-messages"></div>
 
+      <div class="chips" id="quickChips" style="display:none">
+        <div class="chip" onclick="sendChip('Try a different location')">Try different location</div>
+        <div class="chip" onclick="sendChip('Change store size')">Change store size</div>
+        <div class="chip" onclick="sendChip('Why is this result low?')">Why is this low?</div>
+      </div>
+
       <div class="input-row">
-        <input id="chatInput" type="text" placeholder="Type your answer or question..." />
+        <input id="chatInput" type="text" placeholder="Ask LARA anything…" />
         <button id="sendBtn">Send</button>
       </div>
 
@@ -32,28 +113,35 @@
       </div>
     </section>
 
-    <section class="panel map-panel">
-      <h2>Map</h2>
-      <div id="map"></div>
-      <div id="selectedLocation" class="selected-location">
-        No candidate location selected yet.
-      </div>
-    </section>
-
-    <section class="panel result-panel">
-      <h2>Model Result</h2>
-
-      <div id="resultSummary" class="result-summary">
-        No model result yet.
-      </div>
-
-      <h3>Nearby Competitors / Attraction Scores</h3>
-      <div id="competitorTable" class="table-wrap"></div>
-    </section>
   </main>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    function sendChip(text) {
+      document.getElementById('chatInput').value = text;
+      document.getElementById('sendBtn').click();
+    }
+
+    function setStep(n) {
+      for (var i = 1; i <= 4; i++) {
+        var el = document.getElementById('step' + i);
+        el.className = 'step ' + (i < n ? 'done' : i === n ? 'active' : 'idle');
+        el.querySelector('.step-dot').textContent = i < n ? '✓' : i;
+      }
+    }
+
+    function showMetricCards(visits, share, comps) {
+      document.getElementById('metricCards').style.display = 'grid';
+      document.getElementById('metricVisits').textContent = visits;
+      document.getElementById('metricShare').textContent = share;
+      document.getElementById('metricComps').textContent = comps;
+      document.getElementById('quickChips').style.display = 'flex';
+    }
+  </script>
+
+ <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/static/map.js"></script>
   <script src="/static/chat.js"></script>
+
 </body>
 </html>
