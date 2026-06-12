@@ -165,6 +165,9 @@ async function handleSend() {
         return;
       }
 
+      const nlRerun = await tryNaturalLanguageRerun(text);
+      if (nlRerun) return;
+
       await askQuestion(text);
       return;
     }
@@ -304,6 +307,41 @@ function extractRerunInputs(message) {
     candidate_lon: coords.lon,
     floor_area: floorArea
   };
+}
+
+async function tryNaturalLanguageRerun(text) {
+  if (!state.last_business_category || !state.candidate_lat || !state.candidate_lon || !state.last_floor_area) {
+    return false;
+  }
+
+  const changeKeywords = /\b(try|switch|change|use|what about|how about|instead)\b/i;
+  if (!changeKeywords.test(text)) {
+    return false;
+  }
+
+  let naicsResponse;
+  try {
+    naicsResponse = await fetch("/api/resolve_naics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_input: text.trim() })
+    });
+  } catch (e) {
+    return false;
+  }
+
+  const data = await naicsResponse.json();
+  if (!data.ok) return false;
+
+  state.business_category = data.naics_code;
+  state.floor_area = state.last_floor_area;
+
+  addBotMessage(
+    `Got it — switching to ${data.category_name} (NAICS ${data.naics_code}) at the same location and floor area.`
+  );
+
+  await runModel();
+  return true;
 }
 
 function renderResult(result) {
