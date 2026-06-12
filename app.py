@@ -294,6 +294,34 @@ def api_resolve_naics():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+
+@app.route("/api/cbg_boundaries")
+def api_cbg_boundaries():
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT geoid, geometry FROM cbg_geometries")
+        rows = cursor.fetchall()
+        conn.close()
+
+        features = []
+        for row in rows:
+            geoid = row[0]
+            geometry = json.loads(row[1])
+            features.append({
+                "type": "Feature",
+                "properties": {"geoid": geoid},
+                "geometry": geometry
+            })
+
+        return jsonify({
+            "type": "FeatureCollection",
+            "features": features
+        })
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 # -------------------------
 # Helper Functions
 # -------------------------
