@@ -11,7 +11,8 @@ const state = {
   last_result: null,
   last_business_category: null,
   last_floor_area: null,
-  scenario_count: 0
+  scenario_count: 0,
+  scenarioHistory: []
 };
 
 addBotMessage(
@@ -216,6 +217,12 @@ async function runModel() {
   state.last_floor_area = state.floor_area;
   state.scenario_count += 1;
 
+  state.scenarioHistory.push({
+    label: "Location " + state.scenario_count,
+    predicted_visits: data.result.predicted_visits,
+    market_share: data.result.market_share
+  });
+
   renderResult(data.result);
 
   if (window.plotCompetitors) {
@@ -293,6 +300,7 @@ function extractRerunInputs(message) {
 function renderResult(result) {
   const summary = document.getElementById("resultSummary");
   const tableWrap = document.getElementById("competitorTable");
+  updateScenarioChart();
 
   const predictedVisits = result.predicted_visits ?? "N/A";
   const marketShare = Number(result.market_share);
@@ -335,6 +343,67 @@ function renderResult(result) {
       </tbody>
     </table>
   `;
+}
+
+let scenarioChart = null;
+
+function updateScenarioChart() {
+  const section = document.getElementById("chartSection");
+
+  if (state.scenarioHistory.length < 1) return;
+
+  section.style.display = "block";
+
+  const labels = state.scenarioHistory.map(s => s.label);
+  const visitsData = state.scenarioHistory.map(s => Number(s.predicted_visits).toFixed(2));
+  const shareData = state.scenarioHistory.map(s => (Number(s.market_share) * 100).toFixed(3));
+
+  const ctx = document.getElementById("scenarioChart").getContext("2d");
+
+  if (scenarioChart) {
+    scenarioChart.destroy();
+  }
+
+  scenarioChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: "Predicted Visits",
+          data: visitsData,
+          backgroundColor: "rgba(2, 128, 144, 0.7)",
+          borderColor: "rgba(2, 128, 144, 1)",
+          borderWidth: 1,
+          yAxisID: "y"
+        },
+        {
+          label: "Market Share (%)",
+          data: shareData,
+          backgroundColor: "rgba(124, 58, 237, 0.7)",
+          borderColor: "rgba(124, 58, 237, 1)",
+          borderWidth: 1,
+          yAxisID: "y1"
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          type: "linear",
+          position: "left",
+          title: { display: true, text: "Predicted Visits" }
+        },
+        y1: {
+          type: "linear",
+          position: "right",
+          title: { display: true, text: "Market Share (%)" },
+          grid: { drawOnChartArea: false }
+        }
+      }
+    }
+  });
 }
 
 function parseCoordinates(text) {
