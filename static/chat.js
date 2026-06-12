@@ -413,6 +413,8 @@ function updateComparisonTable() {
 
   if (state.scenarioHistory.length < 1) return;
 
+  console.log("scenarioHistory:", state.scenarioHistory);
+
   section.style.display = "block";
 
   const headers = ["Metric", ...state.scenarioHistory.map(s => s.label), "Better"];
