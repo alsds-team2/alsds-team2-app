@@ -411,7 +411,7 @@ function updateComparisonTable() {
   const section = document.getElementById("comparisonSection");
   const tableDiv = document.getElementById("comparisonTable");
 
-  if (state.scenarioHistory.length < 2) return;
+  if (state.scenarioHistory.length < 1) return;
 
   section.style.display = "block";
 
