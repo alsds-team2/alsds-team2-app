@@ -228,7 +228,8 @@ async function runModel() {
   state.scenarioHistory.push({
     label: "Location " + state.scenario_count,
     predicted_visits: data.result.predicted_visits,
-    market_share: data.result.market_share
+    market_share: data.result.market_share,
+    competitor_count: Array.isArray(data.result.competitors) ? data.result.competitors.length : 0
   });
 
   renderResult(data.result);
@@ -309,6 +310,7 @@ function renderResult(result) {
   const summary = document.getElementById("resultSummary");
   const tableWrap = document.getElementById("competitorTable");
   updateScenarioChart();
+  updateComparisonTable();
 
   const predictedVisits = result.predicted_visits ?? "N/A";
   const marketShare = Number(result.market_share);
@@ -420,6 +422,69 @@ function updateScenarioChart() {
       }
     }
   });
+}
+function updateComparisonTable() {
+  const section = document.getElementById("comparisonSection");
+  const tableDiv = document.getElementById("comparisonTable");
+
+  if (state.scenarioHistory.length < 2) return;
+
+  section.style.display = "block";
+
+  const headers = ["Metric", ...state.scenarioHistory.map(s => s.label), "Better"];
+
+  const rows = [
+    {
+      metric: "Predicted Visits",
+      values: state.scenarioHistory.map(s => Number(s.predicted_visits).toFixed(2)),
+      higher_is_better: true
+    },
+    {
+      metric: "Market Share (%)",
+      values: state.scenarioHistory.map(s => (Number(s.market_share) * 100).toFixed(3) + "%"),
+      higher_is_better: true
+    },
+    {
+      metric: "Nearby Competitors",
+      values: state.scenarioHistory.map(s => s.competitor_count ?? "N/A"),
+      higher_is_better: false
+    }
+  ];
+
+  const headerRow = headers.map(h => `<th>${escapeHtml(String(h))}</th>`).join("");
+
+  const bodyRows = rows.map(row => {
+    const numericValues = row.values.map(v => parseFloat(v));
+    const best = row.higher_is_better
+      ? Math.max(...numericValues)
+      : Math.min(...numericValues);
+
+    const bestIndex = numericValues.indexOf(best);
+    const betterLabel = state.scenarioHistory[bestIndex]
+      ? state.scenarioHistory[bestIndex].label
+      : "N/A";
+
+    const cells = row.values.map((v, i) => {
+      const isBest = numericValues[i] === best;
+      return `<td style="${isBest ? "font-weight:600;color:#047857;" : ""}">${escapeHtml(String(v))}</td>`;
+    });
+
+    return `<tr>
+      <td>${escapeHtml(row.metric)}</td>
+      ${cells.join("")}
+      <td style="font-weight:600;">${escapeHtml(betterLabel)}</td>
+    </tr>`;
+  }).join("");
+
+  tableDiv.innerHTML = `
+    <table>
+      <thead><tr>${headerRow}</tr></thead>
+      <tbody>${bodyRows}</tbody>
+    </table>
+    <p style="font-size:12px;color:#6b7280;margin-top:8px;">
+      Note: This comparison is based on the Huff model only. It does not include rent, zoning, or parking.
+    </p>
+  `;
 }
 
 function parseCoordinates(text) {
