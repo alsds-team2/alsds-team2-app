@@ -85,6 +85,12 @@ async function handleSend() {
           `I matched your input to: ${data.category_name} (NAICS ${data.naics_code}). ` +
           `I'm not fully confident in this match — please confirm this is correct before continuing.`
         );
+      } else if (data.is_fallback) {
+        addBotMessage(
+          `Got it — ${data.category_name} (NAICS ${data.naics_code}). ` +
+          "Note: this category does not have calibrated parameters, so the model will use default values. Results may be less accurate. " +
+          "Now click the proposed store location on the map, or type coordinates as: 42.24, -71.78"
+        );
       } else {
         addBotMessage(
           `Got it — ${data.category_name} (NAICS ${data.naics_code}). ` +
@@ -324,12 +330,15 @@ async function tryNaturalLanguageRerun(text) {
 
   const data = await naicsResponse.json();
   if (!data.ok) return false;
-
   state.business_category = data.naics_code;
   state.floor_area = state.last_floor_area;
 
+  const fallbackNote = data.is_fallback
+    ? " Note: default parameters will be used for this category."
+    : "";
+
   addBotMessage(
-    `Got it — switching to ${data.category_name} (NAICS ${data.naics_code}) at the same location and floor area.`
+    `Got it — switching to ${data.category_name} (NAICS ${data.naics_code}) at the same location and floor area.${fallbackNote}`
   );
 
   await runModel();
