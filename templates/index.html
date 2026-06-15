@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <title>AI-Assisted Location Decision Support System</title>
@@ -42,7 +43,10 @@
 
     <section class="panel result-panel">
       <h2>Model Result</h2>
-
+      <div id="staleBanner"
+        style="display:none; background:#fef3c7; border:1px solid #f59e0b; color:#92400e; padding:8px 12px; border-radius:6px; margin-bottom:10px; font-size:14px;">
+        ⚠ Results may be outdated. Run the model again to update.
+      </div>
       <div id="resultSummary" class="result-summary">
         No model result yet.
       </div>
@@ -56,4 +60,5 @@
   <script src="/static/map.js"></script>
   <script src="/static/chat.js"></script>
 </body>
+
 </html>
