@@ -58,6 +58,14 @@ def admin_migrate():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/admin/naics_list")
+def naics_list():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT DISTINCT naics_code, top_category FROM pois ORDER BY naics_code")
+    rows = [{"naics_code": r[0], "top_category": r[1]} for r in cursor.fetchall()]
+    conn.close()
+    return jsonify(rows)
 # -------------------------
 # DB Structure Verification
 # -------------------------
