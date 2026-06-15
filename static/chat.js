@@ -163,6 +163,7 @@ async function handleSend() {
           window.setCandidateLocation(coords.lat, coords.lon, false);
         }
 
+        showStaleBanner();
         addBotMessage(
           `Running again with the same business type and floor area at the new location (${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}).`
         );
@@ -241,6 +242,7 @@ async function runModel() {
     competitor_count: Array.isArray(data.result.competitors) ? data.result.competitors.length : 0
   });
 
+  hideStaleBanner();
   renderResult(data.result);
 
   if (window.plotCompetitors) {
@@ -345,6 +347,7 @@ async function tryNaturalLanguageRerun(text) {
     ? " Note: default parameters will be used for this category."
     : "";
 
+  showStaleBanner();
   addBotMessage(
     `Got it — switching to ${data.category_name} (NAICS ${data.naics_code}) at the same location and floor area.${fallbackNote}`
   );
@@ -352,6 +355,17 @@ async function tryNaturalLanguageRerun(text) {
   await runModel();
   return true;
 }
+
+function showStaleBanner() {
+  const banner = document.getElementById("staleBanner");
+  if (banner) banner.style.display = "block";
+}
+
+function hideStaleBanner() {
+  const banner = document.getElementById("staleBanner");
+  if (banner) banner.style.display = "none";
+}
+
 
 function renderResult(result) {
   const summary = document.getElementById("resultSummary");
