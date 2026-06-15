@@ -45,17 +45,17 @@ def dbcheck():
 # Admin: Migration
 # -------------------------
 
-@app.route("/admin/migrate")
-def admin_migrate():
-    try:
-        table  = request.args.get("table")
-        offset = request.args.get("offset", 0, type=int)
-        limit  = request.args.get("limit", 50000, type=int)
-        from migrate_to_azure_sql import run_migration
-        result = run_migration(table=table, offset=offset, limit=limit)
-        return jsonify(result)
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+# @app.route("/admin/migrate")
+# def admin_migrate():
+#     try:
+#         table  = request.args.get("table")
+#         offset = request.args.get("offset", 0, type=int)
+#         limit  = request.args.get("limit", 50000, type=int)
+#         from migrate_to_azure_sql import run_migration
+#         result = run_migration(table=table, offset=offset, limit=limit)
+#         return jsonify(result)
+#     except Exception as e:
+#         return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.route("/admin/naics_list")
