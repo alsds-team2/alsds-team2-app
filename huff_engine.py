@@ -208,6 +208,7 @@ def run_huff_model(
         cursor.execute("""
             SELECT TOP 50
                 p.placekey,
+                p.location_name,
                 p.top_category,
                 p.naics_code,
                 p.area_sq_meters,
@@ -220,7 +221,7 @@ def run_huff_model(
 
         competitors = []
         for cr in comp_rows:
-            placekey, top_cat, naics, area, c_utm_x, c_utm_y = cr
+            placekey,location_name, top_cat, naics, area, c_utm_x, c_utm_y = cr
             if c_utm_x is None or c_utm_y is None:
                 continue
             dist_m     = max(math.sqrt((c_utm_x - utm_x_new)**2 +
@@ -230,7 +231,7 @@ def run_huff_model(
                 (area ** alpha) / (dist_m ** beta) if area else 0.0, 4
             )
             competitors.append({
-                "name":           top_cat,
+                "name":           location_name or top_cat,
                 "placekey":       placekey,
                 "naics_code":     naics,
                 "size":           round(float(area), 1) if area else 0.0,

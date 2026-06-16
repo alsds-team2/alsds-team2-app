@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LARA — Location Analysis & Recommendation Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black:   #08080f;
+      --deep:    #0d0d1e;
+      --purple:  #5720d7;
+      --lavender:#DCB5FF;
+      --mist:    #f3e8ff;
+      --dim:     rgba(255,255,255,0.45);
+      --white:   #ffffff;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--black);
+      color: var(--white);
+      overflow-x: hidden;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 48px;
+      transition: background 0.4s, backdrop-filter 0.4s;
+    }
+    nav.scrolled {
+      background: rgba(8,8,15,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 0.5px solid rgba(255,255,255,0.06);
+    }
+    .nav-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--lavender);
+      letter-spacing: -0.5px;
+      text-decoration: none;
+    }
+    .nav-logo span {
+      color: rgba(255,255,255,0.35);
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      margin-left: 10px;
+      letter-spacing: 0.02em;
+    }
+    .nav-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 22px;
+      border-radius: 6px;
+      background: var(--purple);
+      color: var(--white);
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.2s;
+    }
+    .nav-cta:hover { background: #6d32f0; transform: translateY(-1px); }
+    .nav-cta svg { width: 14px; height: 14px; }
+
+    /* ── HERO ── */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+      overflow: hidden;
+    }
+
+    /* animated grid background */
+    .hero-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(87,32,215,0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(87,32,215,0.07) 1px, transparent 1px);
+      background-size: 60px 60px;
+      animation: gridDrift 20s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes gridDrift {
+      from { transform: translateY(0); }
+      to   { transform: translateY(60px); }
+    }
+
+    /* radial glow */
+    .hero-glow {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -60%);
+      width: 700px; height: 700px;
+      background: radial-gradient(ellipse, rgba(87,32,215,0.28) 0%, transparent 70%);
+      pointer-events: none;
+      animation: pulse 6s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; transform: translate(-50%, -60%) scale(1); }
+      50%       { opacity: 1;   transform: translate(-50%, -60%) scale(1.08); }
+    }
+
+    .hero-content { position: relative; z-index: 2; max-width: 800px; }
+
+    .hero-eyebrow {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--lavender);
+      border: 0.5px solid rgba(220,181,255,0.3);
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 32px;
+    }
+
+    .hero-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(80px, 12vw, 140px);
+      font-weight: 900;
+      line-height: 0.9;
+      letter-spacing: -3px;
+      background: linear-gradient(135deg, #ffffff 0%, #DCB5FF 55%, #9b59ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 24px;
+    }
+
+    .hero-sub {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(15px, 2vw, 18px);
+      font-weight: 400;
+      color: var(--dim);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+
+    .hero-desc {
+      font-size: 16px;
+      line-height: 1.75;
+      color: rgba(255,255,255,0.55);
+      max-width: 520px;
+      margin: 0 auto 44px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 30px;
+      border-radius: 6px;
+      background: var(--purple);
+      color: var(--white);
+      font-size: 15px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 24px rgba(87,32,215,0.4);
+    }
+    .btn-primary:hover {
+      background: #6d32f0;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(87,32,215,0.55);
+    }
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 30px;
+      border-radius: 6px;
+      background: transparent;
+      color: rgba(255,255,255,0.65);
+      font-size: 15px;
+      font-weight: 400;
+      text-decoration: none;
+      border: 0.5px solid rgba(255,255,255,0.15);
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .btn-secondary:hover {
+      border-color: rgba(220,181,255,0.45);
+      color: var(--lavender);
+    }
+
+    .scroll-hint {
+      position: absolute;
+      bottom: 36px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: rgba(255,255,255,0.25);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      z-index: 2;
+    }
+    .scroll-hint .arrow {
+      width: 1px;
+      height: 32px;
+      background: linear-gradient(to bottom, rgba(220,181,255,0.5), transparent);
+      animation: scrollBounce 1.8s ease-in-out infinite;
+    }
+    @keyframes scrollBounce {
+      0%, 100% { opacity: 0.4; transform: scaleY(1); }
+      50%       { opacity: 1;   transform: scaleY(1.2); }
+    }
+
+    /* ── STATS STRIP ── */
+    .stats-strip {
+      background: rgba(255,255,255,0.03);
+      border-top: 0.5px solid rgba(255,255,255,0.06);
+      border-bottom: 0.5px solid rgba(255,255,255,0.06);
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0;
+    }
+    .stat-item {
+      flex: 1;
+      min-width: 180px;
+      padding: 32px 40px;
+      text-align: center;
+      border-right: 0.5px solid rgba(255,255,255,0.06);
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 40px;
+      font-weight: 700;
+      color: var(--lavender);
+      display: block;
+      margin-bottom: 4px;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* ── SECTIONS ── */
+    section {
+      padding: 100px 48px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-eyebrow {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--lavender);
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(32px, 4vw, 50px);
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -1px;
+      color: var(--white);
+      margin-bottom: 18px;
+    }
+
+    .section-body {
+      font-size: 16px;
+      line-height: 1.8;
+      color: rgba(255,255,255,0.5);
+      max-width: 560px;
+    }
+
+    /* ── FEATURES ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 56px;
+    }
+    .feature-card {
+      background: rgba(255,255,255,0.03);
+      border: 0.5px solid rgba(255,255,255,0.07);
+      border-radius: 12px;
+      padding: 32px 28px;
+      transition: border-color 0.3s, background 0.3s;
+    }
+    .feature-card:hover {
+      border-color: rgba(220,181,255,0.3);
+      background: rgba(87,32,215,0.06);
+    }
+    .feature-icon {
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      background: rgba(87,32,215,0.2);
+      border: 0.5px solid rgba(220,181,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      font-size: 20px;
+    }
+    .feature-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 10px;
+    }
+    .feature-desc {
+      font-size: 14px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.45);
+    }
+
+    /* ── HOW IT WORKS ── */
+    .how-section {
+      border-top: 0.5px solid rgba(255,255,255,0.06);
+    }
+    .steps-wrap {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      margin-top: 56px;
+      border: 0.5px solid rgba(255,255,255,0.07);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .step-card {
+      padding: 36px 28px;
+      border-right: 0.5px solid rgba(255,255,255,0.07);
+      position: relative;
+    }
+    .step-card:last-child { border-right: none; }
+    .step-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 48px;
+      font-weight: 900;
+      color: rgba(87,32,215,0.25);
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+    .step-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--white);
+      margin-bottom: 8px;
+    }
+    .step-desc {
+      font-size: 13px;
+      line-height: 1.65;
+      color: rgba(255,255,255,0.4);
+    }
+
+    /* ── CTA BOTTOM ── */
+    .cta-section {
+      border-top: 0.5px solid rgba(255,255,255,0.06);
+      text-align: center;
+      padding: 120px 48px;
+    }
+    .cta-section .section-title {
+      max-width: 600px;
+      margin: 16px auto 20px;
+    }
+    .cta-section .section-body {
+      margin: 0 auto 44px;
+      max-width: 460px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 0.5px solid rgba(255,255,255,0.06);
+      padding: 28px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: rgba(255,255,255,0.2);
+      font-size: 13px;
+    }
+    .footer-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: rgba(220,181,255,0.4);
+      text-decoration: none;
+    }
+    footer a {
+      color: rgba(255,255,255,0.2);
+      text-decoration: none;
+    }
+    footer a:hover { color: var(--lavender); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      nav { padding: 16px 24px; }
+      section { padding: 70px 24px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .steps-wrap { grid-template-columns: repeat(2, 1fr); }
+      .step-card:nth-child(2) { border-right: none; }
+      .step-card:nth-child(1),
+      .step-card:nth-child(2) { border-bottom: 0.5px solid rgba(255,255,255,0.07); }
+      .stat-item { min-width: 140px; padding: 24px; }
+      footer { flex-direction: column; gap: 8px; text-align: center; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hero-grid, .hero-glow, .scroll-hint .arrow { animation: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav id="nav">
+    <a class="nav-logo" href="/">LARA <span>by Team 2 · ALY6080</span></a>
+    <a class="nav-cta" href="/app">
+      Launch App
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M3 8h10M9 4l4 4-4 4"/>
+      </svg>
+    </a>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-grid"></div>
+    <div class="hero-glow"></div>
+    <div class="hero-content">
+      <span class="hero-eyebrow">AI-Powered · Worcester, MA · Huff Gravity Model</span>
+      <h1 class="hero-title">LARA</h1>
+      <p class="hero-sub">Location Analysis &amp; Recommendation Agent</p>
+      <p class="hero-desc">
+        Find the optimal retail location before you sign the lease.
+        LARA uses gravity-based market modeling and AI to predict
+        foot traffic, market share, and competitive pressure — in seconds.
+      </p>
+      <div class="hero-actions">
+        <a class="btn-primary" href="/app">
+          Launch App
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M3 8h10M9 4l4 4-4 4"/>
+          </svg>
+        </a>
+        <a class="btn-secondary" href="#how">How It Works</a>
+      </div>
+    </div>
+    <div class="scroll-hint">
+      <span>Scroll to know more</span>
+      <div class="arrow"></div>
+    </div>
+  </div>
+
+  <!-- STATS STRIP -->
+  <div class="stats-strip">
+    <div class="stat-item">
+      <span class="stat-num">149</span>
+      <span class="stat-label">Census Block Groups</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">4,069</span>
+      <span class="stat-label">Points of Interest</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">23</span>
+      <span class="stat-label">Calibrated NAICS Categories</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-num">GPT-4o</span>
+      <span class="stat-label">AI Recommendation Engine</span>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <section>
+    <p class="section-eyebrow">What LARA Does</p>
+    <h2 class="section-title">Decision intelligence<br/>for retail site selection</h2>
+    <p class="section-body">
+      LARA combines spatial gravity modeling with real visitor data
+      to give you a complete picture of any location — before you commit.
+    </p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📍</div>
+        <div class="feature-title">Market Prediction</div>
+        <p class="feature-desc">
+          Estimate weekly predicted visits and market share for any proposed
+          store location using calibrated Huff Gravity parameters.
+        </p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🏪</div>
+        <div class="feature-title">Competitor Analysis</div>
+        <p class="feature-desc">
+          Identify nearby competitors, their sizes, distances, and
+          attraction scores — so you understand the competitive landscape at a glance.
+        </p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💬</div>
+        <div class="feature-title">AI Recommendations</div>
+        <p class="feature-desc">
+          Ask LARA follow-up questions in plain language.
+          Get contextual analysis powered by Azure OpenAI GPT-4o,
+          grounded in your model results.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how" class="how-section">
+    <p class="section-eyebrow">How It Works</p>
+    <h2 class="section-title">Four steps to a<br/>location decision</h2>
+    <div class="steps-wrap">
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <div class="step-title">Choose a Business Type</div>
+        <p class="step-desc">Tell LARA what kind of store you plan to open. It matches your input to a calibrated NAICS category.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <div class="step-title">Pick a Location</div>
+        <p class="step-desc">Click anywhere on the Worcester map or type coordinates. LARA captures the candidate site instantly.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <div class="step-title">Set Store Size</div>
+        <p class="step-desc">Enter your proposed floor area in square meters. Size is a key driver in the Huff attraction score.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">04</div>
+        <div class="step-title">Get Results &amp; Ask Questions</div>
+        <p class="step-desc">View predicted visits, market share, and nearby competitors — then ask LARA anything about the results.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA BOTTOM -->
+  <div class="cta-section">
+    <p class="section-eyebrow">Ready to explore?</p>
+    <h2 class="section-title">Have a location<br/>in mind?</h2>
+    <p class="section-body">
+      Launch LARA and run your first Huff model in under a minute.
+      No setup required.
+    </p>
+    <a class="btn-primary" href="/app">
+      Launch LARA
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M3 8h10M9 4l4 4-4 4"/>
+      </svg>
+    </a>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <a class="footer-logo" href="/">LARA</a>
+    <span>ALY6080 · Team 2 · Northeastern University · Powered by <a href="https://intelmatix.ai" target="_blank">Intelmatix</a></span>
+  </footer>
+
+  <script>
+    // Nav scroll effect
+    const nav = document.getElementById('nav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 40);
+    });
+  </script>
+</body>
+</html>
