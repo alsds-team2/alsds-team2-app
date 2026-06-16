@@ -11,6 +11,8 @@ const state = {
   last_result: null,
   last_business_category: null,
   last_floor_area: null,
+  last_category_name: null,
+  user_input_category: null,
   scenario_count: 0,
   scenarioHistory: []
 };
@@ -82,6 +84,8 @@ async function handleSend() {
       }
 
       state.business_category = data.naics_code;
+      state.last_category_name = data.category_name;
+      state.user_input_category = text.trim();
 
       if (data.warning) {
         addBotMessage(
@@ -236,7 +240,7 @@ async function runModel() {
   state.scenario_count += 1;
 
   state.scenarioHistory.push({
-    label: "Location " + state.scenario_count,
+    label: `${state.user_input_category || state.last_category_name} @ ${state.candidate_lat.toFixed(2)}, ${state.candidate_lon.toFixed(2)}`,
     predicted_visits: data.result.predicted_visits,
     market_share: data.result.market_share,
     competitor_count: Array.isArray(data.result.competitors) ? data.result.competitors.length : 0
@@ -342,7 +346,8 @@ async function tryNaturalLanguageRerun(text) {
   if (!data.ok) return false;
   state.business_category = data.naics_code;
   state.floor_area = state.last_floor_area;
-
+  state.last_category_name = data.category_name;
+  state.user_input_category = text.trim();
   const fallbackNote = data.is_fallback
     ? " Note: default parameters will be used for this category."
     : "";
