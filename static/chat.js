@@ -240,7 +240,7 @@ async function runModel() {
   state.scenario_count += 1;
 
   state.scenarioHistory.push({
-    label: `${state.user_input_category || state.last_category_name} @ ${state.candidate_lat.toFixed(2)}, ${state.candidate_lon.toFixed(2)}`,
+    label: `${state.user_input_category || state.last_category_name}\n${state.candidate_lat.toFixed(2)}, ${state.candidate_lon.toFixed(2)}`,
     predicted_visits: data.result.predicted_visits,
     market_share: data.result.market_share,
     competitor_count: Array.isArray(data.result.competitors) ? data.result.competitors.length : 0
@@ -517,7 +517,7 @@ function updateComparisonTable() {
     }
   ];
 
-  const headerRow = headers.map(h => `<th>${escapeHtml(String(h))}</th>`).join("");
+  const headerRow = headers.map(h => `<th style="white-space:pre-line;">${escapeHtml(String(h))}</th>`).join("");
 
   const bodyRows = rows.map(row => {
     const numericValues = row.values.map(v => parseFloat(v));
