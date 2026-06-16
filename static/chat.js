@@ -527,7 +527,7 @@ function updateComparisonTable() {
 
     const bestIndex = numericValues.indexOf(best);
     const betterLabel = state.scenarioHistory[bestIndex]
-      ? state.scenarioHistory[bestIndex].label
+      ? "Scenario " + (bestIndex + 1)
       : "N/A";
 
     const cells = row.values.map((v, i) => {
