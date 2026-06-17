@@ -91,6 +91,10 @@ header h2 {
   flex-direction: column;
   min-height: 600px;
   padding: 0;
+  
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
 }
 
 h2 {
