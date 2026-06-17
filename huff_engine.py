@@ -221,7 +221,7 @@ def run_huff_model(
 
         competitors = []
         for cr in comp_rows:
-            placekey,location_name, top_cat, naics, area, c_utm_x, c_utm_y = cr
+            placekey, location_name, top_cat, naics, area, c_utm_x, c_utm_y = cr
             if c_utm_x is None or c_utm_y is None:
                 continue
             dist_m     = max(math.sqrt((c_utm_x - utm_x_new)**2 +
