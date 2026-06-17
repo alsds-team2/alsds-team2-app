@@ -61,6 +61,52 @@ def dbcheck():
 #     except Exception as e:
 #         return jsonify({"ok": False, "error": str(e)}), 500
 
+@app.route("/admin/add_location_name_column")
+def add_location_name_column():
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            ALTER TABLE pois
+            ADD location_name NVARCHAR(500)
+        """)
+        conn.commit()
+        conn.close()
+        return jsonify({"ok": True, "message": "Column added successfully"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/admin/fill_location_name")
+def fill_location_name():
+    try:
+        import sqlite3
+        import os
+        sqlite_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "Data", "urban_ai_v2.db"
+        )
+        sqlite_conn = sqlite3.connect(sqlite_path)
+        sqlite_cursor = sqlite_conn.cursor()
+        sqlite_cursor.execute("SELECT placekey, location_name FROM pois WHERE location_name IS NOT NULL")
+        rows = sqlite_cursor.fetchall()
+        sqlite_conn.close()
+
+        azure_conn = get_connection()
+        azure_cursor = azure_conn.cursor()
+        updated = 0
+        for placekey, location_name in rows:
+            azure_cursor.execute("""
+                UPDATE pois SET location_name = ? WHERE placekey = ?
+            """, (location_name, placekey))
+            updated += 1
+        azure_conn.commit()
+        azure_conn.close()
+
+        return jsonify({"ok": True, "updated": updated})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 
 @app.route("/admin/naics_list")
 def naics_list():
