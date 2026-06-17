@@ -80,25 +80,21 @@ def add_location_name_column():
 @app.route("/admin/fill_location_name")
 def fill_location_name():
     try:
-        import sqlite3
-        import os
-        sqlite_path = os.path.join(
+        import pandas as pd
+        csv_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "Data", "urban_ai_v2.db"
+            "Data", "worcester_pois.csv"
         )
-        sqlite_conn = sqlite3.connect(sqlite_path)
-        sqlite_cursor = sqlite_conn.cursor()
-        sqlite_cursor.execute("SELECT placekey, location_name FROM pois WHERE location_name IS NOT NULL")
-        rows = sqlite_cursor.fetchall()
-        sqlite_conn.close()
+        df = pd.read_csv(csv_path, usecols=["placekey", "location_name"])
+        df = df.dropna(subset=["location_name"])
 
         azure_conn = get_connection()
         azure_cursor = azure_conn.cursor()
         updated = 0
-        for placekey, location_name in rows:
+        for _, row in df.iterrows():
             azure_cursor.execute("""
                 UPDATE pois SET location_name = ? WHERE placekey = ?
-            """, (location_name, placekey))
+            """, (row["location_name"], row["placekey"]))
             updated += 1
         azure_conn.commit()
         azure_conn.close()
