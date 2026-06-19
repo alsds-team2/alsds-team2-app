@@ -348,46 +348,6 @@ function extractRerunInputs(message) {
   };
 }
 
-async function tryNaturalLanguageRerun(text) {
-  if (!state.last_business_category || !state.candidate_lat || !state.candidate_lon || !state.last_floor_area) {
-    return false;
-  }
-
-  const changeKeywords = /\b(try|switch|change|use|what about|how about|instead)\b/i;
-  if (!changeKeywords.test(text)) {
-    return false;
-  }
-
-  let naicsResponse;
-  try {
-    naicsResponse = await fetch("/api/resolve_naics", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_input: text.trim() })
-    });
-  } catch (e) {
-    return false;
-  }
-
-  const data = await naicsResponse.json();
-  if (!data.ok) return false;
-  state.business_category = data.naics_code;
-  state.floor_area = state.last_floor_area;
-  state.last_category_name = data.category_name;
-  state.user_input_category = text.trim();
-  const fallbackNote = data.is_fallback
-    ? " Note: default parameters will be used for this category."
-    : "";
-
-  showStaleBanner();
-  addBotMessage(
-    `Got it — switching to ${data.category_name} (NAICS ${data.naics_code}) at the same location and floor area.${fallbackNote}`
-  );
-
-  await runModel();
-  return true;
-}
-
 function showStaleBanner() {
   const banner = document.getElementById("staleBanner");
   if (banner) banner.style.display = "block";
@@ -402,7 +362,6 @@ function hideStaleBanner() {
 function renderResult(result) {
   const summary = document.getElementById("resultSummary");
   const tableWrap = document.getElementById("competitorTable");
-  updateScenarioChart();
   updateComparisonTable();
 
   const predictedVisits = result.predicted_visits ?? "N/A";
@@ -517,64 +476,6 @@ function renderResult(result) {
 
     sizeWrap.innerHTML = yourBar + competitorBars;
   }
-}
-
-function updateScenarioChart() {
-  const section = document.getElementById("scoreSection");
-  const scoreCard = document.getElementById("scoreCard");
-
-  if (state.scenarioHistory.length < 2) {
-    section.style.display = "none";
-    return;
-  }
-
-  section.style.display = "block";
-
-  const latest = state.scenarioHistory[state.scenarioHistory.length - 1];
-  const visits = Number(latest.predicted_visits);
-  const share = Number(latest.market_share) * 100;
-  const comps = Number(latest.competitor_count);
-
-  const maxVisits = Math.max(...state.scenarioHistory.map(s => Number(s.predicted_visits)), 1);
-  const maxShare = Math.max(...state.scenarioHistory.map(s => Number(s.market_share) * 100), 0.001);
-  const maxComps = Math.max(...state.scenarioHistory.map(s => Number(s.competitor_count)), 1);
-
-  const visitsPct = Math.min((visits / maxVisits) * 100, 100).toFixed(0);
-  const sharePct = Math.min((share / maxShare) * 100, 100).toFixed(0);
-  const compsPct = Math.min((comps / maxComps) * 100, 100).toFixed(0);
-
-  scoreCard.innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:14px;padding:12px 0;">
-      <div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
-          <span style="font-size:13px;color:#6b7280;">Predicted visits</span>
-          <span style="font-size:13px;font-weight:500;">${visits.toFixed(2)} / yr</span>
-        </div>
-        <div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden;">
-          <div style="height:100%;width:${visitsPct}%;background:#0d9488;border-radius:4px;transition:width 0.4s;"></div>
-        </div>
-      </div>
-      <div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
-          <span style="font-size:13px;color:#6b7280;">Market share</span>
-          <span style="font-size:13px;font-weight:500;">${share.toFixed(3)}%</span>
-        </div>
-        <div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden;">
-          <div style="height:100%;width:${sharePct}%;background:#7c3aed;border-radius:4px;transition:width 0.4s;"></div>
-        </div>
-      </div>
-      <div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
-          <span style="font-size:13px;color:#6b7280;">Nearby competitors</span>
-          <span style="font-size:13px;font-weight:500;">${comps} stores</span>
-        </div>
-        <div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden;">
-          <div style="height:100%;width:${compsPct}%;background:#f59e0b;border-radius:4px;transition:width 0.4s;"></div>
-        </div>
-      </div>
-      <p style="font-size:11px;color:#9ca3af;margin:4px 0 0;">Bar length is relative to the best result across all scenarios.</p>
-    </div>
-  `;
 }
 
 function updateComparisonTable() {
