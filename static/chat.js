@@ -43,6 +43,14 @@ window.onMapLocationSelected = function (location) {
     );
     state.step = "floor_area";
     setStep(3);
+  } else if (state.step === "ready" && state.last_business_category && state.last_floor_area) {
+    state.business_category = state.last_business_category;
+    state.floor_area = state.last_floor_area;
+    showStaleBanner();
+    addBotMessage(
+      `Got it — running again at the new location (${location.lat.toFixed(6)}, ${location.lon.toFixed(6)}) with the same business type and floor area.`
+    );
+    runModel();
   }
 };
 
