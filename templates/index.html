@@ -121,7 +121,10 @@
         <input id="chatInput" type="text" placeholder="Ask LARA anything…" />
         <button id="sendBtn">Send</button>
       </div>
-      <div style="text-align:right;margin-bottom:8px;">
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px;">
+        <button onclick="downloadReport()"
+          style="font-size:12px;padding:4px 12px;border-radius:4px;border:1px solid #0d9488;background:#fff;color:#0d9488;cursor:pointer;">↓
+          Download report</button>
         <button onclick="window.startOver()"
           style="font-size:12px;padding:4px 12px;border-radius:4px;border:1px solid #d1d5db;background:#fff;color:#6b7280;cursor:pointer;">↺
           Start over</button>
