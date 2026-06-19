@@ -55,7 +55,9 @@
             <div class="metric-value neutral" id="metricComps">—</div>
           </div>
         </div>
-
+        <div id="analysisSummary"
+          style="font-size:13px;color:#6b7280;margin-bottom:12px;padding:8px 12px;background:#f9fafb;border-radius:6px;display:none;">
+        </div>
         <div id="staleBanner"
           style="display:none; background:#fef3c7; border:1px solid #f59e0b; color:#92400e; padding:8px 12px; border-radius:6px; margin-bottom:10px; font-size:14px;">
           ⚠ Results may be outdated. Run the model again to update.
@@ -119,7 +121,11 @@
         <input id="chatInput" type="text" placeholder="Ask LARA anything…" />
         <button id="sendBtn">Send</button>
       </div>
-
+      <div style="text-align:right;margin-bottom:8px;">
+        <button onclick="window.startOver()"
+          style="font-size:12px;padding:4px 12px;border-radius:4px;border:1px solid #d1d5db;background:#fff;color:#6b7280;cursor:pointer;">↺
+          Start over</button>
+      </div>
       <div class="hint">
         Tip: click the map to choose the proposed store location.
       </div>
@@ -147,6 +153,10 @@
       document.getElementById('metricShare').textContent = share;
       document.getElementById('metricComps').textContent = comps;
       document.getElementById('quickChips').style.display = 'flex';
+    }
+    function startOver() {
+      if (!confirm("Start over? This will clear all current results.")) return;
+      location.reload();
     }
   </script>
 

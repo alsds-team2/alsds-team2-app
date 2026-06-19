@@ -417,6 +417,11 @@ function renderResult(result) {
   updateComparisonTable();
   const panel = document.getElementById("resultPanel");
   if (panel) panel.style.display = "block";
+  const summary_bar = document.getElementById("analysisSummary");
+  if (summary_bar) {
+    summary_bar.style.display = "block";
+    summary_bar.textContent = `Analyzing: ${state.user_input_category || state.last_category_name} · ${state.last_floor_area} m² · ${state.candidate_lat.toFixed(4)}, ${state.candidate_lon.toFixed(4)}`;
+  }
   const predictedVisits = result.predicted_visits ?? "N/A";
   const marketShare = Number(result.market_share);
   const runtime = result.runtime_ms ?? "N/A";
