@@ -39,7 +39,17 @@
       </section>
 
       <section class="panel result-panel" id="resultPanel" style="display:none">
-        <h2>Model Result</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <h2 style="margin:0;">Model Result</h2>
+          <div style="display:flex;gap:8px;">
+            <button onclick="downloadReport()"
+              style="font-size:12px;padding:4px 12px;border-radius:4px;border:1px solid #d1d5db;background:#fff;color:#6b7280;cursor:pointer;">↓
+              Download</button>
+            <button onclick="window.startOver()"
+              style="font-size:12px;padding:4px 12px;border-radius:4px;border:1px solid #d1d5db;background:#fff;color:#6b7280;cursor:pointer;">↺
+              Start over</button>
+          </div>
+        </div>
 
         <div id="metricCards" class="metric-cards" style="display:none">
           <div class="metric-card">
@@ -120,14 +130,6 @@
       <div class="input-row">
         <input id="chatInput" type="text" placeholder="Ask LARA anything…" />
         <button id="sendBtn">Send</button>
-      </div>
-      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px;">
-        <button onclick="downloadReport()"
-          style="font-size:12px;padding:4px 12px;border-radius:4px;border:1px solid #0d9488;background:#fff;color:#0d9488;cursor:pointer;">↓
-          Download report</button>
-        <button onclick="window.startOver()"
-          style="font-size:12px;padding:4px 12px;border-radius:4px;border:1px solid #d1d5db;background:#fff;color:#6b7280;cursor:pointer;">↺
-          Start over</button>
       </div>
       <div class="hint">
         Tip: click the map to choose the proposed store location.
