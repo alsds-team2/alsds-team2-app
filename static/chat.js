@@ -44,13 +44,37 @@ window.onMapLocationSelected = function (location) {
     state.step = "floor_area";
     setStep(3);
   } else if (state.step === "ready" && state.last_business_category && state.last_floor_area) {
-    state.business_category = state.last_business_category;
-    state.floor_area = state.last_floor_area;
-    showStaleBanner();
-    addBotMessage(
-      `Got it — running again at the new location (${location.lat.toFixed(6)}, ${location.lon.toFixed(6)}) with the same business type and floor area.`
-    );
-    runModel();
+    state.candidate_lat = location.lat;
+    state.candidate_lon = location.lon;
+
+    const confirmMsg = document.createElement("div");
+    confirmMsg.className = "message bot";
+    confirmMsg.innerHTML = `
+      New location selected: (${location.lat.toFixed(6)}, ${location.lon.toFixed(6)}).
+      Run the model here?
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button onclick="window.confirmRerun()" style="font-size:12px;padding:4px 12px;border-radius:4px;border:1px solid #0d9488;background:#0d9488;color:#fff;cursor:pointer;">Yes, run</button>
+        <button onclick="window.cancelRerun()" style="font-size:12px;padding:4px 12px;border-radius:4px;border:1px solid #d1d5db;background:#fff;color:#374151;cursor:pointer;">Cancel</button>
+      </div>
+    `;
+    chatMessages.appendChild(confirmMsg);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    window.confirmRerun = function () {
+      confirmMsg.remove();
+      state.business_category = state.last_business_category;
+      state.floor_area = state.last_floor_area;
+      showStaleBanner();
+      addBotMessage(
+        `Running again at (${state.candidate_lat.toFixed(6)}, ${state.candidate_lon.toFixed(6)}) with the same business type and floor area.`
+      );
+      runModel();
+    };
+
+    window.cancelRerun = function () {
+      confirmMsg.remove();
+      addBotMessage("Cancelled. Click the map again to choose a new location.");
+    };
   }
 };
 
