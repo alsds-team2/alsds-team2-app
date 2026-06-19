@@ -363,7 +363,8 @@ function renderResult(result) {
   const summary = document.getElementById("resultSummary");
   const tableWrap = document.getElementById("competitorTable");
   updateComparisonTable();
-
+  const panel = document.getElementById("resultPanel");
+  if (panel) panel.style.display = "block";
   const predictedVisits = result.predicted_visits ?? "N/A";
   const marketShare = Number(result.market_share);
   const runtime = result.runtime_ms ?? "N/A";
