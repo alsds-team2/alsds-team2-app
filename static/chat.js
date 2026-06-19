@@ -457,7 +457,11 @@ function updateScenarioChart() {
   const section = document.getElementById("scoreSection");
   const scoreCard = document.getElementById("scoreCard");
 
-  if (state.scenarioHistory.length < 1) return;
+  if (state.scenarioHistory.length < 2) {
+    section.style.display = "none";
+    return;
+  }
+
   section.style.display = "block";
 
   const latest = state.scenarioHistory[state.scenarioHistory.length - 1];
@@ -553,7 +557,7 @@ function updateComparisonTable() {
   }).join("");
 
   const scenarioHeaders = state.scenarioHistory.map((s, i) =>
-    `<th style="padding:8px 12px;font-size:12px;font-weight:500;color:#6b7280;text-align:left;white-space:pre-line;">${escapeHtml(s.label)}</th>`
+    `<th style="padding:8px 12px;font-size:12px;font-weight:500;color:#6b7280;text-align:left;white-space:pre-line;">Scenario ${i + 1}\n${escapeHtml(s.label)}</th>`
   ).join("");
 
   tableDiv.innerHTML = `
