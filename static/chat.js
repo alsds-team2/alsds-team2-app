@@ -37,12 +37,32 @@ window.onMapLocationSelected = function (location) {
   state.candidate_lon = location.lon;
 
   if (state.step === "location") {
-    addBotMessage(
-      `Great, I captured the candidate location: ${location.lat.toFixed(6)}, ${location.lon.toFixed(6)}. ` +
-      "Now enter the proposed store floor area in square meters."
-    );
-    state.step = "floor_area";
-    setStep(3);
+    const confirmMsg = document.createElement("div");
+    confirmMsg.className = "message bot";
+    confirmMsg.innerHTML = `
+      Location selected: (${location.lat.toFixed(6)}, ${location.lon.toFixed(6)}).
+      Use this location?
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button onclick="window.confirmLocation()" style="font-size:12px;padding:4px 12px;border-radius:4px;border:1px solid #0d9488;background:#0d9488;color:#fff;cursor:pointer;">Yes, use this</button>
+        <button onclick="window.cancelLocation()" style="font-size:12px;padding:4px 12px;border-radius:4px;border:1px solid #d1d5db;background:#fff;color:#374151;cursor:pointer;">Cancel</button>
+      </div>
+    `;
+    chatMessages.appendChild(confirmMsg);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    window.confirmLocation = function () {
+      confirmMsg.remove();
+      addBotMessage(
+        `Great. Now enter the proposed store floor area in square meters.`
+      );
+      state.step = "floor_area";
+      setStep(3);
+    };
+
+    window.cancelLocation = function () {
+      confirmMsg.remove();
+      addBotMessage("Cancelled. Click the map again to choose a location.");
+    };
   } else if (state.step === "ready" && state.last_business_category && state.last_floor_area) {
     state.candidate_lat = location.lat;
     state.candidate_lon = location.lon;
