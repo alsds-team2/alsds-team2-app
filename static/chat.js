@@ -429,127 +429,122 @@ function renderResult(result) {
   `;
 }
 
-let scenarioChart = null;
 
 function updateScenarioChart() {
-  const section = document.getElementById("chartSection");
+  const section = document.getElementById("scoreSection");
+  const scoreCard = document.getElementById("scoreCard");
 
   if (state.scenarioHistory.length < 1) return;
-
   section.style.display = "block";
 
-  const labels = state.scenarioHistory.map(s => s.label);
-  const visitsData = state.scenarioHistory.map(s => Number(s.predicted_visits).toFixed(2));
-  const shareData = state.scenarioHistory.map(s => (Number(s.market_share) * 100).toFixed(3));
+  const latest = state.scenarioHistory[state.scenarioHistory.length - 1];
+  const visits = Number(latest.predicted_visits);
+  const share = Number(latest.market_share) * 100;
+  const comps = Number(latest.competitor_count);
 
-  const ctx = document.getElementById("scenarioChart").getContext("2d");
+  const maxVisits = Math.max(...state.scenarioHistory.map(s => Number(s.predicted_visits)), 1);
+  const maxShare = Math.max(...state.scenarioHistory.map(s => Number(s.market_share) * 100), 0.001);
+  const maxComps = Math.max(...state.scenarioHistory.map(s => Number(s.competitor_count)), 1);
 
-  if (scenarioChart) {
-    scenarioChart.destroy();
-  }
+  const visitsPct = Math.min((visits / maxVisits) * 100, 100).toFixed(0);
+  const sharePct = Math.min((share / maxShare) * 100, 100).toFixed(0);
+  const compsPct = Math.min((comps / maxComps) * 100, 100).toFixed(0);
 
-  scenarioChart = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          label: "Predicted Visits",
-          data: visitsData,
-          backgroundColor: "rgba(2, 128, 144, 0.7)",
-          borderColor: "rgba(2, 128, 144, 1)",
-          borderWidth: 1,
-          yAxisID: "y"
-        },
-        {
-          label: "Market Share (%)",
-          data: shareData,
-          backgroundColor: "rgba(124, 58, 237, 0.7)",
-          borderColor: "rgba(124, 58, 237, 1)",
-          borderWidth: 1,
-          yAxisID: "y1"
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: {
-          type: "linear",
-          position: "left",
-          title: { display: true, text: "Predicted Visits" }
-        },
-        y1: {
-          type: "linear",
-          position: "right",
-          title: { display: true, text: "Market Share (%)" },
-          grid: { drawOnChartArea: false }
-        }
-      }
-    }
-  });
+  scoreCard.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:14px;padding:12px 0;">
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+          <span style="font-size:13px;color:#6b7280;">Predicted visits</span>
+          <span style="font-size:13px;font-weight:500;">${visits.toFixed(2)} / yr</span>
+        </div>
+        <div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${visitsPct}%;background:#0d9488;border-radius:4px;transition:width 0.4s;"></div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+          <span style="font-size:13px;color:#6b7280;">Market share</span>
+          <span style="font-size:13px;font-weight:500;">${share.toFixed(3)}%</span>
+        </div>
+        <div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${sharePct}%;background:#7c3aed;border-radius:4px;transition:width 0.4s;"></div>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+          <span style="font-size:13px;color:#6b7280;">Nearby competitors</span>
+          <span style="font-size:13px;font-weight:500;">${comps} stores</span>
+        </div>
+        <div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${compsPct}%;background:#f59e0b;border-radius:4px;transition:width 0.4s;"></div>
+        </div>
+      </div>
+      <p style="font-size:11px;color:#9ca3af;margin:4px 0 0;">Bar length is relative to the best result across all scenarios.</p>
+    </div>
+  `;
 }
+
 function updateComparisonTable() {
   const section = document.getElementById("comparisonSection");
   const tableDiv = document.getElementById("comparisonTable");
 
   if (state.scenarioHistory.length < 2) return;
-
   section.style.display = "block";
 
-  const headers = ["Metric", ...state.scenarioHistory.map(s => s.label), "Better"];
-
-  const rows = [
-    {
-      metric: "Predicted Visits",
-      values: state.scenarioHistory.map(s => Number(s.predicted_visits).toFixed(2)),
-      higher_is_better: true
-    },
-    {
-      metric: "Market Share (%)",
-      values: state.scenarioHistory.map(s => (Number(s.market_share) * 100).toFixed(3) + "%"),
-      higher_is_better: true
-    },
-    {
-      metric: "Nearby Competitors",
-      values: state.scenarioHistory.map(s => s.competitor_count ?? "N/A"),
-      higher_is_better: false
-    }
+  const metrics = [
+    { label: "Predicted visits / yr", key: "predicted_visits", format: v => Number(v).toFixed(2), higher_is_better: true },
+    { label: "Market share", key: "market_share", format: v => (Number(v) * 100).toFixed(3) + "%", higher_is_better: true },
+    { label: "Nearby competitors", key: "competitor_count", format: v => v + " stores", higher_is_better: false }
   ];
 
-  const headerRow = headers.map(h => `<th style="white-space:pre-line;">${escapeHtml(String(h))}</th>`).join("");
+  const rows = metrics.map(m => {
+    const values = state.scenarioHistory.map(s => Number(m.key === "market_share" ? s[m.key] * 100 : s[m.key]));
+    const best = m.higher_is_better ? Math.max(...values) : Math.min(...values);
+    const bestIndex = values.indexOf(best);
+    const maxVal = Math.max(...values, 0.001);
 
-  const bodyRows = rows.map(row => {
-    const numericValues = row.values.map(v => parseFloat(v));
-    const best = row.higher_is_better
-      ? Math.max(...numericValues)
-      : Math.min(...numericValues);
+    const bars = state.scenarioHistory.map((s, i) => {
+      const raw = Number(m.key === "market_share" ? s[m.key] * 100 : s[m.key]);
+      const pct = Math.min((raw / maxVal) * 100, 100).toFixed(0);
+      const isBest = i === bestIndex;
+      const color = isBest ? "#0d9488" : "#d1d5db";
+      const label = m.format(m.key === "market_share" ? s[m.key] : s[m.key]);
+      return `
+        <td style="padding:8px 12px;vertical-align:middle;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div style="flex:1;height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden;min-width:40px;">
+              <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;"></div>
+            </div>
+            <span style="font-size:12px;${isBest ? "font-weight:500;color:#0d9488;" : "color:#6b7280;"};white-space:nowrap;">${escapeHtml(label)}</span>
+          </div>
+        </td>`;
+    }).join("");
 
-    const bestIndex = numericValues.indexOf(best);
-    const betterLabel = state.scenarioHistory[bestIndex]
-      ? "Scenario " + (bestIndex + 1)
-      : "N/A";
+    const betterLabel = "Scenario " + (bestIndex + 1);
 
-    const cells = row.values.map((v, i) => {
-      const isBest = numericValues[i] === best;
-      return `<td style="${isBest ? "font-weight:600;color:#047857;" : ""}">${escapeHtml(String(v))}</td>`;
-    });
-
-    return `<tr>
-      <td>${escapeHtml(row.metric)}</td>
-      ${cells.join("")}
-      <td style="font-weight:600;">${escapeHtml(betterLabel)}</td>
+    return `<tr style="border-bottom:0.5px solid #f3f4f6;">
+      <td style="padding:8px 12px;font-size:13px;color:#6b7280;white-space:nowrap;">${escapeHtml(m.label)}</td>
+      ${bars}
+      <td style="padding:8px 12px;font-size:12px;font-weight:500;color:#0d9488;white-space:nowrap;">${escapeHtml(betterLabel)}</td>
     </tr>`;
   }).join("");
 
+  const scenarioHeaders = state.scenarioHistory.map((s, i) =>
+    `<th style="padding:8px 12px;font-size:12px;font-weight:500;color:#6b7280;text-align:left;white-space:pre-line;">${escapeHtml(s.label)}</th>`
+  ).join("");
+
   tableDiv.innerHTML = `
-    <table>
-      <thead><tr>${headerRow}</tr></thead>
-      <tbody>${bodyRows}</tbody>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="border-bottom:1px solid #e5e7eb;">
+          <th style="padding:8px 12px;font-size:12px;font-weight:500;color:#6b7280;text-align:left;">Metric</th>
+          ${scenarioHeaders}
+          <th style="padding:8px 12px;font-size:12px;font-weight:500;color:#6b7280;text-align:left;">Better</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
     </table>
-    <p style="font-size:12px;color:#6b7280;margin-top:8px;">
-      Note: This comparison is based on the Huff model only. It does not include rent, zoning, or parking.
-    </p>
+    <p style="font-size:11px;color:#9ca3af;margin-top:8px;">This model does not include rent, zoning, or parking.</p>
   `;
 }
 
