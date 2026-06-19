@@ -405,30 +405,53 @@ function renderResult(result) {
     return;
   }
 
-  tableWrap.innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Distance</th>
-          <th>Size</th>
-          <th>Attraction</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${competitors.map(c => `
-          <tr>
-            <td>${escapeHtml(c.name ?? c.place_name ?? c.poi_name ?? "Unknown")}</td>
-            <td>${escapeHtml(c.distance_miles ?? c.distance ?? "N/A")}</td>
-            <td>${escapeHtml(c.size ?? c.floor_area ?? c.area ?? "N/A")}</td>
-            <td>${escapeHtml(c.attraction ?? "N/A")}</td>
-          </tr>
-        `).join("")}
-      </tbody>
-    </table>
-  `;
-}
+  let sortBy = "distance";
 
+  function renderCompetitorTable(data, sort) {
+    const sorted = [...data].sort((a, b) => {
+      if (sort === "distance") return Number(a.distance_miles) - Number(b.distance_miles);
+      return Number(b.attraction) - Number(a.attraction);
+    });
+
+    tableWrap.innerHTML = `
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button onclick="window.sortCompetitors('distance')"
+          style="font-size:12px;padding:4px 12px;border-radius:4px;border:1px solid #d1d5db;cursor:pointer;background:${sort === 'distance' ? '#0d9488' : '#fff'};color:${sort === 'distance' ? '#fff' : '#374151'};">
+          Nearest first
+        </button>
+        <button onclick="window.sortCompetitors('attraction')"
+          style="font-size:12px;padding:4px 12px;border-radius:4px;border:1px solid #d1d5db;cursor:pointer;background:${sort === 'attraction' ? '#0d9488' : '#fff'};color:${sort === 'attraction' ? '#fff' : '#374151'};">
+          Biggest threat first
+        </button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Store name</th>
+            <th>Distance</th>
+            <th>Size (m²)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sorted.map(c => `
+            <tr>
+              <td>${escapeHtml(c.name ?? "Unknown")}</td>
+              <td>${c.distance_miles ? escapeHtml(String(c.distance_miles)) + " mi" : "N/A"}</td>
+              <td>${escapeHtml(String(c.size ?? "N/A"))}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  window.sortCompetitors = function (newSort) {
+    sortBy = newSort;
+    renderCompetitorTable(competitors, sortBy);
+  };
+
+  renderCompetitorTable(competitors, sortBy);
+}
 
 function updateScenarioChart() {
   const section = document.getElementById("scoreSection");
