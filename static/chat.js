@@ -485,60 +485,53 @@ function updateComparisonTable() {
   if (state.scenarioHistory.length < 2) return;
   section.style.display = "block";
 
-  const metrics = [
-    { label: "Predicted visits / yr", key: "predicted_visits", format: v => Number(v).toFixed(2), higher_is_better: true },
-    { label: "Market share", key: "market_share", format: v => (Number(v) * 100).toFixed(3) + "%", higher_is_better: true },
-    { label: "Nearby competitors", key: "competitor_count", format: v => v + " stores", higher_is_better: false }
-  ];
+  const maxVisits = Math.max(...state.scenarioHistory.map(s => Number(s.predicted_visits)), 0.001);
+  const maxShare = Math.max(...state.scenarioHistory.map(s => Number(s.market_share) * 100), 0.001);
 
-  const rows = metrics.map(m => {
-    const values = state.scenarioHistory.map(s => Number(m.key === "market_share" ? s[m.key] * 100 : s[m.key]));
-    const best = m.higher_is_better ? Math.max(...values) : Math.min(...values);
-    const bestIndex = values.indexOf(best);
-    const maxVal = Math.max(...values, 0.001);
-
-    const bars = state.scenarioHistory.map((s, i) => {
-      const raw = Number(m.key === "market_share" ? s[m.key] * 100 : s[m.key]);
-      const pct = Math.min((raw / maxVal) * 100, 100).toFixed(0);
-      const isBest = i === bestIndex;
-      const color = isBest ? "#0d9488" : "#d1d5db";
-      const label = m.format(m.key === "market_share" ? s[m.key] : s[m.key]);
-      return `
-        <td style="padding:8px 12px;vertical-align:middle;">
-          <div style="display:flex;align-items:center;gap:6px;">
-            <div style="flex:1;height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden;min-width:40px;">
-              <div style="height:100%;width:${pct}%;background:${color};border-radius:4px;"></div>
-            </div>
-            <span style="font-size:12px;${isBest ? "font-weight:500;color:#0d9488;" : "color:#6b7280;"};white-space:nowrap;">${escapeHtml(label)}</span>
-          </div>
-        </td>`;
-    }).join("");
-
-    const betterLabel = "Scenario " + (bestIndex + 1);
-
-    return `<tr style="border-bottom:0.5px solid #f3f4f6;">
-      <td style="padding:8px 12px;font-size:13px;color:#6b7280;white-space:nowrap;">${escapeHtml(m.label)}</td>
-      ${bars}
-      <td style="padding:8px 12px;font-size:12px;font-weight:500;color:#0d9488;white-space:nowrap;">${escapeHtml(betterLabel)}</td>
-    </tr>`;
+  const visitsBars = state.scenarioHistory.map((s, i) => {
+    const val = Number(s.predicted_visits);
+    const pct = Math.min((val / maxVisits) * 100, 100).toFixed(0);
+    const isBest = val === Math.max(...state.scenarioHistory.map(x => Number(x.predicted_visits)));
+    return `
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:12px;color:#6b7280;white-space:pre-line;">Scenario ${i + 1} · ${escapeHtml(s.label)}</span>
+          <span style="font-size:12px;font-weight:500;${isBest ? "color:#0d9488;" : "color:#6b7280;"}">${val.toFixed(2)} / yr</span>
+        </div>
+        <div style="height:10px;background:#f3f4f6;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${isBest ? "#0d9488" : "#d1d5db"};border-radius:4px;transition:width 0.4s;"></div>
+        </div>
+      </div>
+    `;
   }).join("");
 
-  const scenarioHeaders = state.scenarioHistory.map((s, i) =>
-    `<th style="padding:8px 12px;font-size:12px;font-weight:500;color:#6b7280;text-align:left;white-space:pre-line;">Scenario ${i + 1}\n${escapeHtml(s.label)}</th>`
-  ).join("");
+  const shareBars = state.scenarioHistory.map((s, i) => {
+    const val = Number(s.market_share) * 100;
+    const pct = Math.min((val / maxShare) * 100, 100).toFixed(0);
+    const isBest = val === Math.max(...state.scenarioHistory.map(x => Number(x.market_share) * 100));
+    return `
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:12px;color:#6b7280;white-space:pre-line;">Scenario ${i + 1} · ${escapeHtml(s.label)}</span>
+          <span style="font-size:12px;font-weight:500;${isBest ? "color:#7c3aed;" : "color:#6b7280;"}">${val.toFixed(3)}%</span>
+        </div>
+        <div style="height:10px;background:#f3f4f6;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${isBest ? "#7c3aed" : "#d1d5db"};border-radius:4px;transition:width 0.4s;"></div>
+        </div>
+      </div>
+    `;
+  }).join("");
 
   tableDiv.innerHTML = `
-    <table style="width:100%;border-collapse:collapse;">
-      <thead>
-        <tr style="border-bottom:1px solid #e5e7eb;">
-          <th style="padding:8px 12px;font-size:12px;font-weight:500;color:#6b7280;text-align:left;">Metric</th>
-          ${scenarioHeaders}
-          <th style="padding:8px 12px;font-size:12px;font-weight:500;color:#6b7280;text-align:left;">Better</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <p style="font-size:11px;color:#9ca3af;margin-top:8px;">This model does not include rent, zoning, or parking.</p>
+    <div style="margin-bottom:20px;">
+      <div style="font-size:12px;font-weight:500;color:#374151;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Predicted visits</div>
+      ${visitsBars}
+    </div>
+    <div>
+      <div style="font-size:12px;font-weight:500;color:#374151;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:12px;">Market share</div>
+      ${shareBars}
+    </div>
+    <p style="font-size:11px;color:#9ca3af;margin-top:12px;">This model does not include rent, zoning, or parking.</p>
   `;
 }
 
