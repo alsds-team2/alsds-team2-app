@@ -451,6 +451,46 @@ function renderResult(result) {
   };
 
   renderCompetitorTable(competitors, sortBy);
+
+  // Size comparison chart
+  const sizeWrap = document.getElementById("sizeChart");
+  if (sizeWrap) {
+    document.getElementById("sizeChartSection").style.display = "block";
+    const yourSize = state.last_floor_area || 0;
+    const allSizes = [yourSize, ...competitors.map(c => Number(c.size) || 0)];
+    const maxSize = Math.max(...allSizes, 1);
+
+    const yourBar = `
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:500;color:#1d4ed8;">Your store</span>
+          <span style="font-size:12px;color:#1d4ed8;">${yourSize.toLocaleString()} m²</span>
+        </div>
+        <div style="height:10px;background:#f3f4f6;border-radius:4px;overflow:hidden;">
+          <div style="height:100%;width:${Math.min((yourSize / maxSize) * 100, 100).toFixed(0)}%;background:#1d4ed8;border-radius:4px;"></div>
+        </div>
+      </div>
+      <div style="border-top:0.5px solid #e5e7eb;margin-bottom:10px;"></div>
+    `;
+
+    const competitorBars = competitors.map(c => {
+      const size = Number(c.size) || 0;
+      const pct = Math.min((size / maxSize) * 100, 100).toFixed(0);
+      return `
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+            <span style="font-size:12px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%;">${escapeHtml(c.name ?? "Unknown")}</span>
+            <span style="font-size:12px;color:#6b7280;">${size.toLocaleString()} m²</span>
+          </div>
+          <div style="height:8px;background:#f3f4f6;border-radius:4px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:#d1d5db;border-radius:4px;"></div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    sizeWrap.innerHTML = yourBar + competitorBars;
+  }
 }
 
 function updateScenarioChart() {
