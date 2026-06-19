@@ -176,8 +176,35 @@ async function handleSend() {
         return;
       }
 
-      const nlRerun = await tryNaturalLanguageRerun(text);
-      if (nlRerun) return;
+      // First try to resolve as a business type
+      let naicsResponse;
+      try {
+        naicsResponse = await fetch("/api/resolve_naics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_input: text.trim() })
+        });
+        const naicsData = await naicsResponse.json();
+        if (naicsData.ok) {
+          state.business_category = naicsData.naics_code;
+          state.floor_area = state.last_floor_area;
+          state.last_category_name = naicsData.category_name;
+          state.user_input_category = text.trim();
+
+          const fallbackNote = naicsData.is_fallback
+            ? " Note: default parameters will be used for this category."
+            : "";
+
+          showStaleBanner();
+          addBotMessage(
+            `Got it — switching to ${naicsData.category_name} (NAICS ${naicsData.naics_code}) at the same location and floor area.${fallbackNote}`
+          );
+          await runModel();
+          return;
+        }
+      } catch (e) {
+        // not a business type, fall through to askQuestion
+      }
 
       await askQuestion(text);
       return;
@@ -384,11 +411,10 @@ function renderResult(result) {
   const notes = result.notes ?? "";
 
   summary.innerHTML = `
-    <strong>Predicted Visits:</strong> ${escapeHtml(predictedVisits)}<br>
-    <strong>Estimated Market Share:</strong> ${Number.isFinite(marketShare) ? (marketShare * 100).toFixed(2) + "%" : "N/A"}<br>
-    <strong>Runtime:</strong> ${escapeHtml(runtime)} ms<br>
-    <strong>Notes:</strong> ${escapeHtml(notes)}
+    <strong>Predicted Visits:</strong> ${escapeHtml(String(predictedVisits))} / yr<br>
+    <strong>Estimated Market Share:</strong> ${Number.isFinite(marketShare) ? (marketShare * 100).toFixed(3) + "%" : "N/A"}
   `;
+
   /*add function to display metric cards*/
   if (typeof showMetricCards === "function") {
     showMetricCards(
