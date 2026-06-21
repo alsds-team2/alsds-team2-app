@@ -229,7 +229,7 @@ async function handleSend() {
       }
 
       // Keyword detection for chips — must come before NAICS resolver
-      // otherwise "Try a different location" gets matched to a business category
+      // otherwise chip text gets matched to a business category by AI
       const lower = text.toLowerCase();
 
       if (lower.includes("different location") || (lower.includes("try") && lower.includes("location")) || lower.includes("new location")) {
@@ -243,6 +243,36 @@ async function handleSend() {
         state.step = "floor_area";
         setStep(3);
         addBotMessage("Sure! Enter a new floor area in square meters.");
+        return;
+      }
+
+      if (lower.includes("change category") || lower.includes("change business") || lower.includes("different category")) {
+        const confirmMsg = document.createElement("div");
+        confirmMsg.className = "message bot";
+        confirmMsg.innerHTML = `
+          Switching to a new business type will clear your current scenario history.
+          Are you sure?
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button onclick="window.confirmCategoryChange()" style="font-size:12px;padding:4px 12px;border-radius:4px;border:1px solid #0d9488;background:#0d9488;color:#fff;cursor:pointer;">Yes, change it</button>
+            <button onclick="window.cancelCategoryChange()" style="font-size:12px;padding:4px 12px;border-radius:4px;border:1px solid #d1d5db;background:#fff;color:#374151;cursor:pointer;">Cancel</button>
+          </div>
+        `;
+        chatMessages.appendChild(confirmMsg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        window.confirmCategoryChange = function () {
+          confirmMsg.remove();
+          state.scenarioHistory = [];
+          state.scenario_count = 0;
+          state.step = "category";
+          setStep(1);
+          addBotMessage("Sure! What type of business would you like to analyze?");
+        };
+
+        window.cancelCategoryChange = function () {
+          confirmMsg.remove();
+          addBotMessage("Cancelled. You can keep asking questions about the current result.");
+        };
         return;
       }
 
@@ -260,6 +290,8 @@ async function handleSend() {
           state.floor_area = state.last_floor_area;
           state.last_category_name = naicsData.category_name;
           state.user_input_category = text.trim();
+          state.scenarioHistory = [];
+          state.scenario_count = 0;
 
           const fallbackNote = naicsData.is_fallback
             ? " Note: default parameters will be used for this category."
