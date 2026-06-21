@@ -64,6 +64,19 @@ header h2 {
   border-color: rgba(220,181,255,0.35);
 }
 
+.badge-home {
+  text-decoration: none;
+  background: rgba(255,255,255,0.1);
+  color: #ffffff;
+  border-color: rgba(255,255,255,0.25);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.badge-home:hover {
+  background: rgba(255,255,255,0.2);
+}
+
 /* ── Layout ── */
 .layout {
   display: grid;

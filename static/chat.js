@@ -228,6 +228,24 @@ async function handleSend() {
         return;
       }
 
+      // Keyword detection for chips — must come before NAICS resolver
+      // otherwise "Try a different location" gets matched to a business category
+      const lower = text.toLowerCase();
+
+      if (lower.includes("different location") || (lower.includes("try") && lower.includes("location")) || lower.includes("new location")) {
+        state.step = "location";
+        setStep(2);
+        addBotMessage("Sure! Click a new location on the map, or type coordinates like: 42.24, -71.78");
+        return;
+      }
+
+      if (lower.includes("change store size") || lower.includes("change size") || (lower.includes("different") && lower.includes("size"))) {
+        state.step = "floor_area";
+        setStep(3);
+        addBotMessage("Sure! Enter a new floor area in square meters.");
+        return;
+      }
+
       // First try to resolve as a business type
       let naicsResponse;
       try {
