@@ -266,6 +266,10 @@ async function handleSend() {
           state.scenario_count = 0;
           state.step = "category";
           setStep(1);
+
+          const compSection = document.getElementById("comparisonSection");
+          if (compSection) compSection.style.display = "none";
+
           addBotMessage("Sure! What type of business would you like to analyze?");
         };
 
