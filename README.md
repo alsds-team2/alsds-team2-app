@@ -1,159 +1,114 @@
-# AI-Assisted Location Decision Support System (ALSDS) - Instructor Baseline
+# Sitewise — AI-Assisted Location Decision Support System
 
-This repository provides the **baseline application and infrastructure** for the ALSDS capstone project.
+**LARA (Location Analysis & Recommendation Agent)** is an AI-powered web application that helps retail businesses find optimal store locations in Worcester, MA using the Huff Gravity Model.
 
-It includes:
+🔗 **Live App:** [https://alsds-team2-app-a6e4apfabwcbakaq.eastus-01.azurewebsites.net](https://alsds-team2-app-a6e4apfabwcbakaq.eastus-01.azurewebsites.net)
 
-- Core **data files** for Worcester, MA (CBGs, POIs, visits, parameters)
-- A **baseline Huff-style model implementation** (`huff_engine.py`)
-- A **Flask-based web application** with:
-  - Guided chatbot (Azure OpenAI / GPT-4o)
-  - Interactive map (Leaflet + GeoJSON)
-  - Model execution API
-- Azure deployment configuration (App Service compatible)
+---
 
+## Members
 
-## Important Setup Instructions
+Kuan-Yu Chen, Tung-Tsan Wu, Salem Dejenu 
 
-### This is NOT a fork-based workflow
 
-Each team must:
+**Sponsor:** [Intelmatix](https://intelmatix.ai)
+**University:** Northeastern University
 
-- Create a NEW repository in your GitHub Organization
-- Copy (clone or download/upload) this repository into your repo
+---
 
+## What LARA Does
 
-**Do NOT fork this repository.**
+LARA guides users through a four-step location analysis workflow:
 
+1. **Choose a business type** — LARA matches natural language input to a calibrated NAICS category
+2. **Pick a location** — Click anywhere on the Worcester map or type coordinates
+3. **Set store size** — Enter the proposed floor area in square meters
+4. **Get results** — View predicted visits, market share, and nearby competitors, then ask LARA follow-up questions in plain language
 
+---
 
-## Required Repository Naming
+## Key Features
 
-Each team repository must be named:
+- **Huff Gravity Model** — Calibrated alpha/beta parameters for 23 NAICS retail categories across 149 Census Block Groups and 4,069 Points of Interest in Worcester, MA
+- **AI Chat (LARA)** — Powered by Azure OpenAI GPT-4o; answers follow-up questions grounded in model results
+- **Scenario Comparison** — Compare multiple locations side by side (same business type and floor area)
+- **Competitor Analysis** — Shows nearby competitors with real store names, distance, size, and attraction scores
+- **Download Report** — Export a full HTML report with KPIs, competitor table, and location comparison
+- **Landing Page** — Dark-themed landing page inspired by Intelmatix's design aesthetic
 
+---
 
-alsds-teamX-app
+## Tech Stack
 
+| Layer | Technology |
+|-------|-----------|
+| Frontend | HTML, CSS, JavaScript, Leaflet.js |
+| Backend | Python, Flask |
+| Database | Azure SQL (pyodbc) |
+| AI | Azure OpenAI GPT-4o |
+| Deployment | Azure App Service |
+| Version Control | GitHub |
 
-Example:
+---
 
+## Project Structure
 
-alsds-team3-app
+```
+alsds-team2-app/
+├── app.py                  # Flask routes and API endpoints
+├── huff_engine.py          # Huff Gravity Model V3 implementation
+├── db.py                   # Database connection helper
+├── migrate_to_azure_sql.py # SQLite → Azure SQL migration script
+├── static/
+│   ├── chat.js             # LARA chat logic and step flow
+│   ├── map.js              # Leaflet map integration
+│   └── styles.css          # App styling
+├── templates/
+│   ├── index.html          # Main app UI
+│   └── landing.html        # Landing page
+└── Data/
+    └── urban_ai_v2.db      # Local SQLite database
+```
 
+---
 
+## API Endpoints
 
-## Baseline Version
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Landing page |
+| `/app` | GET | Main LARA application |
+| `/health` | GET | Health check — returns `{"status":"ok"}` |
+| `/dbcheck` | GET | Verifies Azure SQL connection |
+| `/api/run_huff` | POST | Runs the Huff Gravity Model |
+| `/api/ask` | POST | LARA follow-up question answering |
+| `/api/resolve_naics` | POST | Resolves natural language to NAICS category |
+| `/api/cbg_boundaries` | GET | Returns Worcester CBG GeoJSON |
 
+---
 
-Stable infrastructure release: v1-baseline
+## Deployment
 
+The app is deployed on **Azure App Service** with automatic deployment from the `main` branch via GitHub Actions.
 
-All teams must start from this version before making any changes.
+**Branch workflow:**
+```
+feature branch → PR → merge to main → Azure auto-deploys
+```
 
-
-
-## Do NOT Modify (Critical Infrastructure)
-
-The following files must remain unchanged:
-
-startup.sh
-requirements.txt (do not remove any current requirements, you can add more items if required.)
-app.py (initially, unless explicitly instructed)
-deployment configuration (GitHub Actions / Azure settings)
-environment variable naming
-API route structure (/api/run_huff, /api/ask)
-
-
-These are required for:
-- Azure deployment
-- database connectivity
-- OpenAI integration
-- instructor testing
-
-
-## What Teams ARE Expected to Modify
-
-Teams should focus on:
-
-
-- huff_engine.py
-- database design (Azure SQL)
-- data preprocessing / optimization
-- optional UI enhancements
-
-
-## Huff Model Interface Requirement
-
-Your implementation must preserve this function:
-
-`def run_huff_model(candidate_lat, candidate_lon, business_category, floor_area, db_connection):`
-
-Return format must include:
-
-predicted_visits
-market_share
-competitors
-runtime_ms
-notes
-
-You are free to completely redesign the internal logic.
-
-## Map Integration
-
-The app uses:
-
-static/data/worcester_cbgs_map.geojson
-
-Ensure this file exists and is not removed.
-
-### The map supports:
-
-- click-to-select candidate location
-- competitor visualization
-
-## Chatbot Behavior
-
-The chatbot will:
-
-1. Guide the user to input:
-- business category
-- location (map click or coordinates)
-- floor area
-2. Run the model
-3. Provide explanation
-4. Answer follow-up questions
-
-
-## Deployment Workflow
-
-After your repository is ready:
-
-1. Instructor connects your repo to Azure Web App
-2. GitHub Actions handles deployment
-3. App is available at your Azure URL
-
-## Required Endpoints
-
-Your deployed app must support:
-
-`/health` → returns `{"status":"ok"}`
-
-`/dbcheck` → verifies database connection
-
-`/`  → loads UI (chat + map)
-
-## Evaluation Focus
-
-Your project will be evaluated on:
-
-- Model quality (Huff implementation)
-- Database design and efficiency
-- Query performance / runtime
-- Code organization
-- Ability to explain results (chatbot)
-
-## Notes
-- Keep your repository clean and well-structured
-- Commit changes regularly
-- Create a `dev` branch and test locally before deployment
-
+**Environment variables required:**
+- `SQL_CONNECTION_STRING` — Azure SQL connection string
+- `AZURE_OPENAI_ENDPOINT` — Azure OpenAI endpoint
+- `AZURE_OPENAI_KEY` — Azure OpenAI API key
+
+---
+
+## Data
+
+| Dataset | Rows | Description |
+|---------|------|-------------|
+| Census Block Groups | 149 | Worcester, MA CBG demographics and coordinates |
+| Points of Interest | 4,069 | Retail POIs with NAICS codes and floor areas |
+| CBG–POI Visits | 26,924 | Historical visit counts per CBG–POI pair |
+| CBG–POI Distances | 606,281 | Pre-computed UTM distances |
+| Calibrated Parameters | 23 | Alpha/beta values per NAICS category |
