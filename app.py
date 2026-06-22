@@ -510,12 +510,19 @@ def api_resolve_naics():
                 {
                     "role": "system",
                     "content": (
-                        "You are a NAICS code classifier. "
-                        "Given a business description, return the single best matching NAICS code "
-                        "from the provided whitelist. "
+                        "You are a NAICS code classifier for a retail location analysis tool in Worcester, MA. "
+                        "Your job is to match a user's business description to a NAICS code from the provided whitelist. "
+                        "IMPORTANT RULES:\n"
+                        "1. Only accept inputs that describe a real, specific type of retail or service business. "
+                        "Examples of valid inputs: 'hardware store', 'pharmacy', 'coffee shop', 'dental clinic'.\n"
+                        "2. Reject inputs that are: city names, questions, random words, non-business concepts, or anything that is not a business type. "
+                        "Examples of invalid inputs: 'Boston', 'What is my revenue?', 'casino in Vegas', 'hello'.\n"
+                        "3. If the input is not a valid business type, set is_valid to false.\n"
+                        "4. If the input is a valid business type but no match is reasonable, set confidence to 'low'.\n"
                         "Respond ONLY with a JSON object in this exact format, no extra text:\n"
-                        '{"naics_code": "4441", "category_name": "Building Material and Supplies Dealers", "confidence": "high"}\n'
-                        "If no match is reasonable, set confidence to 'low'."
+                        '{"is_valid": true, "naics_code": "4441", "category_name": "Building Material and Supplies Dealers", "confidence": "high"}\n'
+                        "If invalid, respond: "
+                        '{"is_valid": false, "naics_code": "", "category_name": "", "confidence": "low"}'
                     )
                 },
                 {
@@ -539,9 +546,16 @@ def api_resolve_naics():
 
         parsed = json.loads(raw)
 
+        is_valid = parsed.get("is_valid", True)
         naics_code = str(parsed.get("naics_code", "")).strip()
         category_name = parsed.get("category_name", "")
         confidence = parsed.get("confidence", "low")
+
+        if not is_valid:
+            return jsonify({
+                "ok": False,
+                "error": "I couldn't recognize that as a business type. Please describe the type of store or service you want to open, such as 'hardware store' or 'pharmacy'."
+            }), 400
 
         if naics_code not in NAICS_WHITELIST:
             return jsonify({
