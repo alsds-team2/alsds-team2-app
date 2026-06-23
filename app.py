@@ -654,16 +654,21 @@ def safe_competitor_sample(result, n=3):
 # -------------------------
 
 def generate_explanation(result):
+    predicted_visits = result.get("predicted_visits")
+    market_share = result.get("market_share")
+    market_share_pct = f"{float(market_share) * 100:.3f}%" if market_share is not None else "N/A"
+
     prompt = f"""
 A Huff-style gravity model has been run with the following results:
 
-Predicted visits: {result.get("predicted_visits")}
-Market share: {result.get("market_share")}
+Predicted visits: {predicted_visits} per year
+Market share: {market_share_pct}
 
 Competitors (sample):
 {safe_competitor_sample(result, 3)}
 
 Explain what these results mean for a business owner considering this location.
+Include the exact numbers ({predicted_visits} visits/year and {market_share_pct} market share) in your explanation.
 """
 
     response = client.chat.completions.create(
@@ -676,7 +681,7 @@ Explain what these results mean for a business owner considering this location.
                     "Explain results in plain, simple language — avoid technical terms like 'NAICS', 'attraction score', or 'calibrated parameters'. "
                     "Do not use markdown formatting like bold or bullet points. "
                     "Keep the response to 3 sentences maximum. "
-                    "First sentence: describe what the predicted visits and market share mean in plain terms. "
+                    "First sentence: state the exact predicted visits per year and market share percentage, then explain what they mean in plain terms. "
                     "Second sentence: briefly explain why (competition, location). "
                     "Third sentence: remind the user that rent, zoning, and parking are not included in this analysis. "
                     "Never claim a location is guaranteed to succeed or fail."
