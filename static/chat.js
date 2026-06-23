@@ -408,7 +408,8 @@ function extractRerunInputs(message) {
   const naicsMatch =
     message.match(/naics(?:\s+code)?\s*(?:is|=|:|of|for)?\s*(\d{2,6})/i) ||
     message.match(/business\s+category\s*(?:is|=|:|of|for)?\s*(\d{2,6})/i) ||
-    message.match(/category\s*(?:is|=|:|of|for)?\s*(\d{2,6})/i);
+    message.match(/category\s*(?:is|=|:|of|for)?\s*(\d{2,6})/i) ||
+    message.match(/^(\d{4,6})\s*,/);
 
   const areaMatch =
     message.match(/area\s*(?:of|is|=|:)?\s*([\d,]+(?:\.\d+)?)/i) ||
