@@ -120,6 +120,39 @@ async function handleSend() {
       await rerunModelFromMessage(rerunInputs);
       return;
     }
+    // Check if user provided NAICS + coordinates together (missing floor area)
+    const partialCoords = parseCoordinates(text);
+    const partialNaics = text.match(/naics\s*(?:code)?\s*(\d{2,6})/i) || text.match(/\b(\d{4,6})\b/);
+
+    if (partialCoords && partialNaics && state.step === "category") {
+      const naicsCode = partialNaics[1];
+      try {
+        const naicsResponse = await fetch("/api/resolve_naics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_input: naicsCode })
+        });
+        const naicsData = await naicsResponse.json();
+        if (naicsData.ok) {
+          state.business_category = naicsData.naics_code;
+          state.last_category_name = naicsData.category_name;
+          state.user_input_category = naicsCode;
+          state.candidate_lat = partialCoords.lat;
+          state.candidate_lon = partialCoords.lon;
+          if (window.setCandidateLocation) {
+            window.setCandidateLocation(partialCoords.lat, partialCoords.lon, false);
+          }
+          state.step = "floor_area";
+          setStep(3);
+          addBotMessage(
+            `Got it — ${naicsData.category_name} at (${partialCoords.lat.toFixed(6)}, ${partialCoords.lon.toFixed(6)}). Now enter the proposed store floor area in square meters.`
+          );
+          return;
+        }
+      } catch (e) {
+        // fall through to normal handling
+      }
+    }
 
     if (state.step === "category") {
       const response = await fetch("/api/resolve_naics", {
