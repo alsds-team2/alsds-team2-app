@@ -53,9 +53,7 @@ window.onMapLocationSelected = function (location) {
 
     window.confirmLocation = function () {
       confirmMsg.remove();
-      addBotMessage(
-        `Great. Now enter the proposed store floor area in square meters.`
-      );
+      addBotMessage(`Great. Now enter the proposed store floor area in square meters.`);
       state.step = "floor_area";
       setStep(3);
     };
@@ -86,9 +84,7 @@ window.onMapLocationSelected = function (location) {
       state.business_category = state.last_business_category;
       state.floor_area = state.last_floor_area;
       showStaleBanner();
-      addBotMessage(
-        `Running again at (${state.candidate_lat.toFixed(6)}, ${state.candidate_lon.toFixed(6)}) with the same business type and floor area.`
-      );
+      addBotMessage(`Running again at (${state.candidate_lat.toFixed(6)}, ${state.candidate_lon.toFixed(6)}) with the same business type and floor area.`);
       runModel();
     };
 
@@ -107,21 +103,52 @@ async function handleSend() {
   chatInput.value = "";
 
   try {
-    /*
-      IMPORTANT:
-      Before treating the message as a normal follow-up question,
-      check whether the user is asking to rerun the model with a new full set of inputs.
+    const allInOneMatch = text.match(/^(\d{4,6})\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*([\d,]+(?:\.\d+)?)$/);
+    if (allInOneMatch) {
+      const naics = allInOneMatch[1];
+      const lat = parseFloat(allInOneMatch[2]);
+      const lon = parseFloat(allInOneMatch[3]);
+      const area = parseFloat(allInOneMatch[4].replace(/,/g, ""));
+      if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 && area > 0) {
+        state.business_category = naics;
+        state.candidate_lat = lat;
+        state.candidate_lon = lon;
+        state.floor_area = area;
+        state.user_input_category = naics;
+        state.step = "ready";
+        // Try to resolve category name in background
+        try {
+          const nr = await fetch("/api/resolve_naics", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_input: naics })
+          });
+          const nd = await nr.json();
+          if (nd.ok) {
+            state.last_category_name = nd.category_name;
+            state.user_input_category = naics;
+          } else {
+            state.last_category_name = "NAICS " + naics;
+          }
+        } catch (e) {
+          state.last_category_name = "NAICS " + naics;
+        }
+        state.step = "ready";
+        setStep(4);
+        addBotMessage(`I recognized your all-in-one input! Running the Huff model for NAICS ${naics}, location (${lat.toFixed(6)}, ${lon.toFixed(6)}), and floor area ${area} sqm.`);
+        if (window.setCandidateLocation) {
+          window.setCandidateLocation(lat, lon, false);
+        }
+        await runModel();
+        return;
+      }
+    }
 
-      Example supported message:
-      "use 42.229212, -71.805525 and rerun the model for NAICS code 4441 and area of 1000 square meters"
-    */
     const rerunInputs = extractRerunInputs(text);
-
     if (rerunInputs) {
       await rerunModelFromMessage(rerunInputs);
       return;
     }
-    // Check if user provided NAICS + coordinates together (missing floor area)
     const partialCoords = parseCoordinates(text);
     const partialNaics = text.match(/naics\s*(?:code)?\s*(\d{2,6})/i) || text.match(/\b(\d{4,6})\b/);
 
@@ -145,13 +172,10 @@ async function handleSend() {
           }
           state.step = "floor_area";
           setStep(3);
-          addBotMessage(
-            `Got it — ${naicsData.category_name} at (${partialCoords.lat.toFixed(6)}, ${partialCoords.lon.toFixed(6)}). Now enter the proposed store floor area in square meters.`
-          );
+          addBotMessage(`Got it — ${naicsData.category_name} at (${partialCoords.lat.toFixed(6)}, ${partialCoords.lon.toFixed(6)}). Now enter the proposed store floor area in square meters.`);
           return;
         }
       } catch (e) {
-        // fall through to normal handling
       }
     }
 
@@ -227,7 +251,6 @@ async function handleSend() {
 
       state.floor_area = area;
       state.step = "ready";
-      /*set 4 step tell user the progress*/
       setStep(4);
 
       addBotMessage(
@@ -254,15 +277,12 @@ async function handleSend() {
         }
 
         showStaleBanner();
-        addBotMessage(
-          `Running again with the same business type and floor area at the new location (${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}).`
-        );
+        addBotMessage(`Running again with the same business type and floor area at the new location (${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}).`);
 
         await runModel();
         return;
       }
 
-      // First try to resolve as a business type
       let naicsResponse;
       try {
         naicsResponse = await fetch("/api/resolve_naics", {
@@ -277,19 +297,14 @@ async function handleSend() {
           state.last_category_name = naicsData.category_name;
           state.user_input_category = text.trim();
 
-          const fallbackNote = naicsData.is_fallback
-            ? " Note: default parameters will be used for this category."
-            : "";
+          const fallbackNote = naicsData.is_fallback ? " Note: default parameters will be used for this category." : "";
 
           showStaleBanner();
-          addBotMessage(
-            `Got it — switching to ${naicsData.category_name} (NAICS ${naicsData.naics_code}) at the same location and floor area.${fallbackNote}`
-          );
+          addBotMessage(`Got it — switching to ${naicsData.category_name} (NAICS ${naicsData.naics_code}) at the same location and floor area.${fallbackNote}`);
           await runModel();
           return;
         }
       } catch (e) {
-        // not a business type, fall through to askQuestion
       }
 
       await askQuestion(text);
@@ -334,8 +349,6 @@ async function runModel() {
       candidate_lon: state.candidate_lon,
       business_category: state.business_category,
       floor_area: state.floor_area,
-
-      // Optional aliases for clearer backend compatibility
       naics_code: state.business_category,
       floor_area_sqm: state.floor_area
     })
@@ -446,7 +459,6 @@ function hideStaleBanner() {
   if (banner) banner.style.display = "none";
 }
 
-
 function renderResult(result) {
   const summary = document.getElementById("resultSummary");
   const tableWrap = document.getElementById("competitorTable");
@@ -468,7 +480,6 @@ function renderResult(result) {
     <strong>Estimated Market Share:</strong> ${Number.isFinite(marketShare) ? (marketShare * 100).toFixed(3) + "%" : "N/A"}
   `;
 
-  /*add function to display metric cards*/
   if (typeof showMetricCards === "function") {
     showMetricCards(
       typeof predictedVisits === "number" ? predictedVisits.toFixed(1) : predictedVisits,
@@ -597,12 +608,6 @@ function updateComparisonTable() {
 }
 
 function parseCoordinates(text) {
-  /*
-    Supports:
-    42.229212, -71.805525
-    use 42.229212, -71.805525 and rerun...
-  */
-  // Find all number pairs and return the first valid lat/lon pair
   const allMatches = [...text.matchAll(/(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)/g)];
   let match = null;
   for (const m of allMatches) {
@@ -632,7 +637,6 @@ function parseCoordinates(text) {
   return { lat, lon };
 }
 
-
 function addBotMessage(text) {
   addMessage(text, "bot");
 }
@@ -652,6 +656,7 @@ function addMessage(text, type) {
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
+
 function downloadReport() {
   if (!state.last_result) {
     addBotMessage("Please complete a model run first before downloading a report.");
