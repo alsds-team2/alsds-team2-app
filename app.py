@@ -684,6 +684,7 @@ Include the exact numbers ({predicted_visits} visits/year and {market_share_pct}
                     "First sentence: state the exact predicted visits per year and market share percentage, then explain what they mean in plain terms. "
                     "Second sentence: briefly explain why (competition, location). "
                     "Third sentence: remind the user that rent, zoning, and parking are not included in this analysis. "
+                    "Only mention competitor names that appear in the Competitors sample provided. Never invent or add competitor names that are not in the data. "
                     "Never claim a location is guaranteed to succeed or fail."
                 )
             },
