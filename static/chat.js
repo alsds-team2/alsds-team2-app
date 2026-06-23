@@ -115,6 +115,38 @@ async function handleSend() {
       Example supported message:
       "use 42.229212, -71.805525 and rerun the model for NAICS code 4441 and area of 1000 square meters"
     */
+    const allInOneMatch = text.match(/^(\d{4,6})\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*([\d,]+(?:\.\d+)?)$/);
+    if (allInOneMatch) {
+      const naics = allInOneMatch[1];
+      const lat = parseFloat(allInOneMatch[2]);
+      const lon = parseFloat(allInOneMatch[3]);
+      const area = parseFloat(allInOneMatch[4].replace(/,/g, ""));
+      if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 && area > 0) {
+        state.business_category = naics;
+        state.candidate_lat = lat;
+        state.candidate_lon = lon;
+        state.floor_area = area;
+        state.user_input_category = naics;
+        // Resolve category name
+        try {
+          const nr = await fetch("/api/resolve_naics", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_input: naics })
+          });
+          const nd = await nr.json();
+          state.last_category_name = nd.ok ? nd.category_name : "NAICS " + naics;
+        } catch (e) {
+          state.last_category_name = "NAICS " + naics;
+        }
+        state.step = "ready";
+        setStep(4);
+        addBotMessage(`Running the Huff model for NAICS ${naics}, location (${lat.toFixed(6)}, ${lon.toFixed(6)}), floor area ${area} sqm.`);
+        if (window.setCandidateLocation) window.setCandidateLocation(lat, lon, false);
+        await runModel();
+        return;
+      }
+    }
     const rerunInputs = extractRerunInputs(text);
 
     if (rerunInputs) {
