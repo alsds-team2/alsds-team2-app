@@ -21,7 +21,8 @@ setStep(1);
 
 addBotMessage(
   "Welcome. I'm Lara, your personal agent. I will guide you through a store-location scenario for Worcester, MA. " +
-  "First, what type of business are you planning to open? For example: hardware store, grocery store, or pharmacy."
+  "First, what type of business are you planning to open? For example: hardware store, grocery store, or pharmacy. " +
+  "Or type everything at once: NAICS code, coordinates, and floor area — e.g. 445310, 42.2750, -71.7997, 200"
 );
 
 sendBtn.addEventListener("click", handleSend);
