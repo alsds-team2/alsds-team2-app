@@ -500,6 +500,16 @@ def api_resolve_naics():
         if not user_input:
             return jsonify({"ok": False, "error": "No input provided."}), 400
 
+        # If user directly entered a NAICS code, skip GPT and lookup directly
+        if user_input in NAICS_WHITELIST:
+            is_fallback = user_input not in NAICS_CALIBRATED
+            return jsonify({
+                "ok": True,
+                "naics_code": user_input,
+                "category_name": NAICS_WHITELIST[user_input],
+                "is_fallback": is_fallback
+            })
+
         whitelist_text = "\n".join(
             f"{code}: {name}" for code, name in NAICS_WHITELIST.items()
         )
