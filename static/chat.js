@@ -466,7 +466,8 @@ function extractRerunInputs(message) {
   const areaMatch =
     message.match(/area\s*(?:of|is|=|:)?\s*([\d,]+(?:\.\d+)?)/i) ||
     message.match(/floor\s+area\s*(?:of|is|=|:)?\s*([\d,]+(?:\.\d+)?)/i) ||
-    message.match(/([\d,]+(?:\.\d+)?)\s*(?:square\s+meters|square\s+metres|sqm|sq\.?\s*m|m2|m²)/i);
+    message.match(/([\d,]+(?:\.\d+)?)\s*(?:square\s+meters|square\s+metres|sqm|sq\.?\s*m|m2|m²)/i) ||
+    message.match(/(?:naics\s*\d{2,6}.*?-?\d+\.\d+.*?-?\d+\.\d+.*?,\s*)([\d,]+(?:\.\d+)?)\s*$/i);
 
   if (!naicsMatch || !areaMatch) {
     return null;
@@ -653,7 +654,17 @@ function parseCoordinates(text) {
     42.229212, -71.805525
     use 42.229212, -71.805525 and rerun...
   */
-  const match = text.match(/(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)/);
+  // Find all number pairs and return the first valid lat/lon pair
+  const allMatches = [...text.matchAll(/(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)/g)];
+  let match = null;
+  for (const m of allMatches) {
+    const lat = Number(m[1]);
+    const lon = Number(m[2]);
+    if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+      match = m;
+      break;
+    }
+  }
 
   if (!match) {
     return null;
