@@ -21,8 +21,7 @@ setStep(1);
 
 addBotMessage(
   "Welcome. I'm Lara, your personal agent. I will guide you through a store-location scenario for Worcester, MA. " +
-  "First, what type of business are you planning to open? For example: hardware store, grocery store, or pharmacy. " +
-  "Or type everything at once: NAICS code, coordinates, and floor area — e.g. 445310, 42.2750, -71.7997, 200"
+  "First, what type of business are you planning to open? For example: hardware store, grocery store, or pharmacy. "
 );
 
 sendBtn.addEventListener("click", handleSend);
@@ -439,7 +438,7 @@ async function runModel() {
   state.scenario_count += 1;
 
   state.scenarioHistory.push({
-    label: `${state.user_input_category || state.last_category_name}\n${state.candidate_lat.toFixed(2)}, ${state.candidate_lon.toFixed(2)}`,
+    label: `${state.last_category_name || state.user_input_category}\n${state.candidate_lat.toFixed(2)}, ${state.candidate_lon.toFixed(2)}`,
     predicted_visits: data.result.predicted_visits,
     market_share: data.result.market_share,
     competitor_count: Array.isArray(data.result.competitors) ? data.result.competitors.length : 0
